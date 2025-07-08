@@ -1,0 +1,270 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  name        String
+  email       String   @unique
+  username    String   @unique
+  password    String
+  image       String? // OAuth ya manual upload
+  imagePublicId   String?
+  bio         String?
+  role        Role     @default(USER)
+  isVerified         Boolean   @default(false)
+  verifyCode         String?
+  verifyCodeExpiry   DateTime?
+  lastOtpRequestedAt   DateTime?
+  resetPasswordToken       String?   // Hashed token
+  resetTokenExpiry DateTime?
+  githubUrl   String?
+  linkedinUrl String?
+  websiteUrl  String?
+  achievementPoints Int @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  projects           Project[]
+  collaborations     Collaboration[]
+  feedbacks          Feedback[]
+  notifications      Notification[]
+  milestonesCreated  Milestone[] // milestones created by user
+  feedbackReactions  FeedbackReaction[]
+  activityLogs       ActivityLog[]
+  chatParticipations ChatParticipant[]
+  chatMessages       ChatMessage[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ProjectStatus {
+  IDEA
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Project {
+  id            Int           @id @default(autoincrement())
+  title         String
+  description   String
+  techStack     String[]
+  tags          String[]
+  status        ProjectStatus @default(IDEA)
+  githubUrl     String?
+  liveDemoUrl   String?
+  screenshots   String[]
+  uploadedAt    DateTime      @default(now())
+  lastUpdatedAt DateTime      @updatedAt
+
+  // Relations
+  userId         Int
+  user           User            @relation(fields: [userId], references: [id])
+  milestones     Milestone[]
+  feedbacks      Feedback[]
+  collaborations Collaboration[]
+  activityLogs   ActivityLog[]
+  chatRooms      ChatRoom[]
+}
+
+model Collaboration {
+  id Int @id @default(autoincrement())
+
+  project       Project             @relation(fields: [projectId], references: [id])
+  projectId     Int
+  user          User                @relation(fields: [userId], references: [id])
+  userId        Int
+  status        CollaborationStatus @default(PENDING)
+  accessLevel   AccessLevel         @default(LIMITED)
+  createdAt     DateTime            @default(now())
+  lastUpdatedAt DateTime            @updatedAt
+}
+
+enum CollaborationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum AccessLevel {
+  LIMITED
+  FULL
+}
+
+model Milestone {
+  id               Int              @id @default(autoincrement())
+  title            String
+  description      String
+  project          Project          @relation(fields: [projectId], references: [id])
+  projectId        Int
+  createdBy        User             @relation(fields: [createdById], references: [id])
+  createdById      Int
+  status           MilestoneStatus  @default(PENDING)
+  completionStatus CompletionStatus @default(NOT_STARTED)
+  proofUrl         String?
+  isPublic         Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  lastUpdatedAt    DateTime         @updatedAt
+}
+
+enum MilestoneStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CompletionStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
+model Feedback {
+  id      Int    @id @default(autoincrement())
+  content String // Required: Detailed feedback
+  rating  Int? // Optional: Can rate from 1 to 5 stars (optional)
+
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId Int
+
+  createdBy   User @relation(fields: [createdById], references: [id])
+  createdById Int
+
+  createdAt     DateTime @default(now())
+  lastUpdatedAt DateTime @updatedAt
+
+  reactions FeedbackReaction[]
+}
+
+model FeedbackReaction {
+  id         Int          @id @default(autoincrement())
+  type       ReactionType
+  user       User         @relation(fields: [userId], references: [id])
+  userId     Int
+  feedback   Feedback     @relation(fields: [feedbackId], references: [id])
+  feedbackId Int
+  createdAt  DateTime     @default(now())
+}
+
+enum ReactionType {
+  LIKE
+  HELPFUL
+  CONFUSED
+  DISAGREE
+}
+
+model ActivityLog {
+  id        Int     @id @default(autoincrement())
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId Int
+  user      User    @relation(fields: [userId], references: [id])
+  userId    Int
+
+  actionType  ActivityType
+  description String?
+  targetId    Int? // Target object (milestone id, feedback id, etc.)
+  targetType  String? // Target type like 'Milestone', 'Feedback' for dynamic linking
+
+  createdAt DateTime @default(now())
+}
+
+enum ActivityType {
+  CREATE_MILESTONE
+  UPDATE_MILESTONE
+  DELETE_MILESTONE
+  CREATE_FEEDBACK
+  REACT_FEEDBACK
+  REQUEST_COLLABORATION
+  APPROVE_COLLABORATION
+  POST_PROJECT
+  UPDATE_PROJECT
+  DELETE_PROJECT
+}
+
+model Notification {
+  id     Int  @id @default(autoincrement())
+  user   User @relation(fields: [userId], references: [id])
+  userId Int // receiver id
+
+  type    NotificationType
+  message String
+  isRead  Boolean          @default(false)
+
+  targetId   Int? // Related object id (project, milestone, etc.)
+  targetType String? // Related object type like 'Project', 'Milestone'
+
+  createdAt DateTime @default(now())
+}
+
+enum NotificationType {
+  COLLABORATION_REQUEST
+  COLLABORATION_APPROVED
+  MILESTONE_APPROVED
+  MILESTONE_REJECTED
+  NEW_FEEDBACK
+  FEEDBACK_REACTION
+  GENERAL
+}
+
+model ChatRoom {
+  id        Int      @id @default(autoincrement())
+  project   Project? @relation(fields: [projectId], references: [id])
+  projectId Int? // Optional: Project-based chat or standalone group/DM
+
+  isGroup Boolean @default(false) // To differentiate DM vs Group
+  name    String? // Optional for group chats
+  image   String? // Optional group chat image
+
+  createdAt     DateTime @default(now())
+  lastMessageAt DateTime @default(now()) // For sorting by recent chats
+
+  messages     ChatMessage[]
+  participants ChatParticipant[]
+}
+
+model ChatParticipant {
+  id         Int      @id @default(autoincrement())
+  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id])
+  chatRoomId Int
+
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+
+  joinedAt   DateTime  @default(now())
+  hasLeft    Boolean   @default(false) // In case user leaves the chat
+  lastSeenAt DateTime? // for showing online status
+}
+
+model ChatMessage {
+  id         Int      @id @default(autoincrement())
+  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id])
+  chatRoomId Int
+
+  sender   User @relation(fields: [senderId], references: [id])
+  senderId Int
+
+  message     String
+  messageType MessageType @default(TEXT) // Text, Image, File, etc.
+
+  isEdited  Boolean @default(false)
+  isDeleted Boolean @default(false) // soft message for delete
+
+  createdAt DateTime @default(now())
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  LINK
+}

@@ -1,41 +1,59 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Devnesty Project - .gitignore
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+# Node.js dependencies
+node_modules/
 
-# testing
-/coverage
+# Next.js build files
+.next/
+out/
 
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# Logs
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Environment variables (sensitive files)
+.env
+.env.local
+.env.development.local
+.env.production.local
+.env.test.local
 
-# vercel
+# Prisma generated folders (migrations optional)
+prisma/migrations/
+
+# Database files (if any local DB used temporarily)
+*.sqlite
+*.db
+
+# Deployment-specific folders
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Editor folders
+.vscode/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Mac system files
+.DS_Store
+
+# Linux swap files
+*.swp
+
+# IDE-specific files
+.idea/
+
+# Jest test reports (optional)
+jest-html-reporters-*.html
+
+# Sonner notification cache (optional)
+.sonner
+
+# OS temporary files
+Thumbs.db
