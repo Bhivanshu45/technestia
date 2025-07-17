@@ -2,6 +2,7 @@ import cloudinary from "@/lib/cloudinary";
 
 export const uploadToCloudinary = async (
   buffer: Buffer,
+  resourceType: "image" | "video" = "image",
   folder: string = process.env.FOLDER_NAME as string
 ): Promise<{ secureUrl: string; publicId: string }> => {
   if (!buffer) {
@@ -14,7 +15,7 @@ export const uploadToCloudinary = async (
       public_id: string;
     }>((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
-        { folder, resource_type: "auto" },
+        { folder, resource_type: resourceType },
         (error, result) => {
           if (error) reject(error);
           else if (result)
@@ -27,7 +28,9 @@ export const uploadToCloudinary = async (
     const result = await uploadPromise;
 
     if (!result?.secure_url || !result?.public_id) {
-      throw new Error("Cloudinary upload failed: No URL or public_id returned.");
+      throw new Error(
+        "Cloudinary upload failed: No URL or public_id returned."
+      );
     }
 
     return { secureUrl: result.secure_url, publicId: result.public_id };

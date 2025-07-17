@@ -33,6 +33,7 @@ model User {
   // Relations
   projects           Project[]
   collaborations     Collaboration[]
+  invitedCollaborations Collaboration[] @relation("InviteSender")
   feedbacks          Feedback[]
   notifications      Notification[]
   milestonesCreated  Milestone[] // milestones created by user
@@ -60,6 +61,7 @@ model Project {
   techStack     String[]
   tags          String[]
   status        ProjectStatus @default(IDEA)
+  isPublic      Boolean       @default(false)
   githubUrl     String?
   liveDemoUrl   String?
   screenshots   String[]
@@ -79,12 +81,14 @@ model Project {
 model Collaboration {
   id Int @id @default(autoincrement())
 
-  project       Project             @relation(fields: [projectId], references: [id])
+  project       Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId     Int
-  user          User                @relation(fields: [userId], references: [id])
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId        Int
   status        CollaborationStatus @default(PENDING)
   accessLevel   AccessLevel         @default(LIMITED)
+  invitedBy     Int?             
+  inviter       User?               @relation("InviteSender",fields: [invitedBy], references: [id])
   createdAt     DateTime            @default(now())
   lastUpdatedAt DateTime            @updatedAt
 }
@@ -104,7 +108,7 @@ model Milestone {
   id               Int              @id @default(autoincrement())
   title            String
   description      String
-  project          Project          @relation(fields: [projectId], references: [id])
+  project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId        Int
   createdBy        User             @relation(fields: [createdById], references: [id])
   createdById      Int
@@ -134,10 +138,10 @@ model Feedback {
   content String // Required: Detailed feedback
   rating  Int? // Optional: Can rate from 1 to 5 stars (optional)
 
-  project   Project @relation(fields: [projectId], references: [id])
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId Int
 
-  createdBy   User @relation(fields: [createdById], references: [id])
+  createdBy   User @relation(fields: [createdById], references: [id], onDelete: Cascade)
   createdById Int
 
   createdAt     DateTime @default(now())
@@ -149,9 +153,9 @@ model Feedback {
 model FeedbackReaction {
   id         Int          @id @default(autoincrement())
   type       ReactionType
-  user       User         @relation(fields: [userId], references: [id])
+  user       User         @relation(fields: [userId], references: [id],onDelete: Cascade)
   userId     Int
-  feedback   Feedback     @relation(fields: [feedbackId], references: [id])
+  feedback   Feedback     @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
   feedbackId Int
   createdAt  DateTime     @default(now())
 }
@@ -165,7 +169,7 @@ enum ReactionType {
 
 model ActivityLog {
   id        Int     @id @default(autoincrement())
-  project   Project @relation(fields: [projectId], references: [id])
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId Int
   user      User    @relation(fields: [userId], references: [id])
   userId    Int
@@ -186,9 +190,12 @@ enum ActivityType {
   REACT_FEEDBACK
   REQUEST_COLLABORATION
   APPROVE_COLLABORATION
+  REJECT_COLLABORATION
   POST_PROJECT
   UPDATE_PROJECT
   DELETE_PROJECT
+  LEAVE_PROJECT
+  REMOVED_FORM_PROJECT
 }
 
 model Notification {
@@ -218,7 +225,7 @@ enum NotificationType {
 
 model ChatRoom {
   id        Int      @id @default(autoincrement())
-  project   Project? @relation(fields: [projectId], references: [id])
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId Int? // Optional: Project-based chat or standalone group/DM
 
   isGroup Boolean @default(false) // To differentiate DM vs Group

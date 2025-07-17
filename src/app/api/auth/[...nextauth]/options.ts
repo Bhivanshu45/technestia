@@ -117,9 +117,21 @@ export const authOptions: NextAuthOptions = {
               isVerified: true, // OAuth user considered verified
             },
           });
+
+          return {
+            id: newUser.id,
+            name: newUser.name,
+            email: newUser.email,
+            image: newUser.image,
+          };
         }
 
-        return true;
+        return {
+          id: existingUser.id,
+          name: existingUser.name,
+          email: existingUser.email,
+          image: existingUser.image,
+        };
         
       } catch (error) {
         console.error("SignIn Callback Error:", error);
@@ -128,19 +140,21 @@ export const authOptions: NextAuthOptions = {
     },
     async jwt({ token, user,account }) {
       if (user) {
-        token.id = user.id;
         if (account?.provider === "credentials") {
+          token.id = user.id;
           token.username = user.username;
           token.isVerified = user.isVerified;
         }else{
           const dbUser = await prisma.user.findUnique({
             where: { email: user.email! },
             select: {
+              id: true,
               username: true,
               isVerified: true,
             },
           });
           if (dbUser) {
+            token.id = dbUser.id;
             token.username = dbUser.username;
             token.isVerified = dbUser.isVerified;
           } else {
