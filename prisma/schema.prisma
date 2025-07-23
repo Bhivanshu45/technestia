@@ -112,15 +112,16 @@ model Milestone {
   projectId        Int
   createdBy        User             @relation(fields: [createdById], references: [id])
   createdById      Int
-  status           MilestoneStatus  @default(PENDING)
   completionStatus CompletionStatus @default(NOT_STARTED)
+  updateRequest    UpdateRequestStatus  @default(NO_REQUEST)
   proofUrl         String?
   isPublic         Boolean          @default(false)
   createdAt        DateTime         @default(now())
   lastUpdatedAt    DateTime         @updatedAt
 }
 
-enum MilestoneStatus {
+enum UpdateRequestStatus {
+  NO_REQUEST
   PENDING
   APPROVED
   REJECTED
