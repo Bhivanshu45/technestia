@@ -159,14 +159,18 @@ model FeedbackReaction {
   feedback   Feedback     @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
   feedbackId Int
   createdAt  DateTime     @default(now())
+  @@unique([feedbackId, userId])
 }
 
 enum ReactionType {
   LIKE
-  HELPFUL
-  CONFUSED
-  DISAGREE
+  LOVE
+  LAUGH
+  WOW
+  SAD
+  ANGRY
 }
+
 
 model ActivityLog {
   id        Int     @id @default(autoincrement())
