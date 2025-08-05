@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "../../auth/[...nextauth]/options";
 import { createChatSchema } from "@/validations/chatSchema/createChatSchema";
+import { CollaborationStatus } from "@prisma/client";
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user.id || !session?.user?.id) {
     return NextResponse.json({ 
@@ -35,9 +36,8 @@ export async function POST(req: NextRequest) {
   } = parsedData.data;
 
   let chatName = name;
-
-
   try {
+    
     if (isGroup && !chatName && projectId) {
       const project = await prisma.project.findUnique({
         where: { id: projectId },
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     }
     if (!isGroup && targetUserId === currentUserId) {
       return NextResponse.json(
-        { success: false, message: "Cannot create chat with yourself" },
+        { success: false, message: "You cannot create chat with yourself" },
         { status: 400 }
       );
     }
@@ -108,9 +108,16 @@ export async function POST(req: NextRequest) {
       }
 
       // Create new 1-on-1 chat
+      const targetUser = await prisma.user.findUnique({
+        where: { id: targetUserId! },
+        select: { name: true,image: true },
+      });
+
       const newChat = await prisma.chatRoom.create({
         data: {
           isGroup: false,
+          name: targetUser?.name,
+          image: targetUser?.image || null,
           lastMessageAt: new Date(),
           participants: {
             create: [{ userId: currentUserId }, { userId: targetUserId! }],
@@ -137,6 +144,59 @@ export async function POST(req: NextRequest) {
       new Set(participantIds!.concat(currentUserId))
     );
 
+    if (isGroup && projectId) {
+      const existingGroup = await prisma.chatRoom.findFirst({
+        where: {
+          isGroup: true,
+          projectId,
+        },
+      });
+
+      if (existingGroup) {
+        return NextResponse.json(
+          {
+            success: true,
+            message: "Group chat for this project already exists",
+            data: existingGroup,
+          },
+          { status: 200 }
+        );
+      }
+
+      const collaborators = await prisma.collaboration.findMany({
+        where: {
+          projectId,
+          status: CollaborationStatus.ACCEPTED,
+        },
+        select: { userId: true },
+      });
+
+      const projectOwner = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { userId: true },
+      });
+
+      const validUserIds = new Set([
+        ...collaborators.map((c) => c.userId),
+        projectOwner?.userId,
+      ]);
+
+      const invalidUsers = uniqueParticipantIds.filter(
+        (id) => !validUserIds.has(id)
+      );
+      if (invalidUsers.length) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Some participants are not part of the project",
+            invalidUsers,
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+
     const newGroupChat = await prisma.chatRoom.create({
       data: {
         isGroup: true,
@@ -145,7 +205,10 @@ export async function POST(req: NextRequest) {
         projectId,
         lastMessageAt: new Date(),
         participants: {
-          create: uniqueParticipantIds.map((id) => ({ userId: id })),
+          create: uniqueParticipantIds.map((id) => ({
+            userId: id,
+            isAdmin: id === currentUserId,
+          })),
         },
       },
       include: {
@@ -154,6 +217,7 @@ export async function POST(req: NextRequest) {
         },
       },
     });
+
 
     return NextResponse.json(
       {
