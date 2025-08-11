@@ -17,7 +17,7 @@ export async function GET(
     }
 
     const userId = Number(session.user.id);
-    const { chatroomId } = context.params;
+    const { chatroomId } = await context.params;
     const chatroomIdNumber = Number(chatroomId);
 
     if (!chatroomIdNumber || isNaN(chatroomIdNumber)) {

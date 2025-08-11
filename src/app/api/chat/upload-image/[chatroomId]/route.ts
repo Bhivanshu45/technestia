@@ -29,20 +29,23 @@ export async function PUT(req: Request,context: { params: { chatroomId: string }
   try {
     const chatroom = await prisma.chatRoom.findUnique({
       where: { id: chatroomIdNumber },
+      select: {
+    id: true,
+    image: true,
+    imagePublicId: true,
+    participants: {
+      where: { hasLeft: false },
       include: {
-        participants: {
-          where: { hasLeft: false },
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  image: true,
-                },
-              },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
           },
         },
       },
+    },
+   }
     });
 
     if(!chatroom) {
@@ -94,7 +97,7 @@ export async function PUT(req: Request,context: { params: { chatroomId: string }
       );
     }
 
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const allowedTypes = ["image/jpeg","image/jpg", "image/png", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
         { success: false, message: "File type not supported" },
