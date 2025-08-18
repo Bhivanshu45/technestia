@@ -2,7 +2,7 @@ import cloudinary from "@/lib/cloudinary";
 
 export const uploadToCloudinary = async (
   buffer: Buffer,
-  resourceType: "image" | "video" = "image",
+  resourceType: "image" | "video" | "raw" = "image",
   folder: string = process.env.FOLDER_NAME as string
 ): Promise<{ secureUrl: string; publicId: string }> => {
   if (!buffer) {
@@ -15,7 +15,10 @@ export const uploadToCloudinary = async (
       public_id: string;
     }>((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
-        { folder, resource_type: resourceType },
+        {
+          folder,
+          resource_type: resourceType,
+        },
         (error, result) => {
           if (error) reject(error);
           else if (result)

@@ -270,6 +270,7 @@ model ChatMessage {
 
   message     String
   messageType MessageType @default(TEXT) // Text, Image, File, etc.
+  cloudinaryPublicId String?
 
   isEdited  Boolean @default(false)
   isDeleted Boolean @default(false) // soft message for delete
