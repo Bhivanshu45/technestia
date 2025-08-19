@@ -256,8 +256,10 @@ model ChatParticipant {
   isAdmin    Boolean   @default(false)
 
   joinedAt   DateTime  @default(now())
-  hasLeft    Boolean   @default(false) // In case user leaves the chat
-  lastSeenAt DateTime? // for showing online status
+  hasLeft    Boolean   @default(false)
+  lastSeenAt DateTime? 
+  @@unique([chatRoomId, userId])
+
 }
 
 model ChatMessage {

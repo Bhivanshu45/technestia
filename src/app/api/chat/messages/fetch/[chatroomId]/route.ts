@@ -21,9 +21,9 @@ export async function GET(
   const { chatroomId } = await context.params;
   const chatroomIdNumber = Number(chatroomId);
   const { searchParams } = new URL(req.url);
-  const cursor = searchParams.get("cursor"); // createdAt timestamp
+  const cursor = searchParams.get("cursor"); 
   const limitParam = searchParams.get("limit");
-  const limit = Math.min(Number(limitParam) || 20, 50); // default 20, max 50
+  const limit = Math.min(Number(limitParam) || 20, 50);
 
   if (!chatroomIdNumber || isNaN(chatroomIdNumber)) {
     return NextResponse.json(
@@ -60,8 +60,12 @@ export async function GET(
       );
     }
 
+    const lastSeenAt = participant.lastSeenAt ?? new Date(0);
+
     const messages = await prisma.chatMessage.findMany({
-      where: { chatRoomId: chatroomIdNumber },
+      where: {
+        chatRoomId: chatroomIdNumber,
+      },
       take: limit + 1,
       orderBy: { createdAt: "desc" },
       ...(cursor && {
@@ -82,16 +86,41 @@ export async function GET(
 
     const hasNextPage = messages.length > limit;
     const trimmedMessages = hasNextPage ? messages.slice(0, limit) : messages;
-
     const nextCursor = hasNextPage
       ? trimmedMessages[trimmedMessages.length - 1].createdAt.toISOString()
       : null;
+
+    // === 🟡 UNREAD INFO ===
+
+    const unreadCount = await prisma.chatMessage.count({
+      where: {
+        chatRoomId: chatroomIdNumber,
+        createdAt: { gt: lastSeenAt },
+      },
+    });
+
+    const firstUnread = await prisma.chatMessage.findFirst({
+      where: {
+        chatRoomId: chatroomIdNumber,
+        createdAt: { gt: lastSeenAt },
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+      select: {
+        id: true,
+      },
+    });
 
     return NextResponse.json(
       {
         success: true,
         messages: trimmedMessages,
         nextCursor,
+        unreadInfo: {
+          unreadCount,
+          firstUnreadMessageId: firstUnread?.id ?? null,
+        },
       },
       { status: 200 }
     );
