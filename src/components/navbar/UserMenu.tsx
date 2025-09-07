@@ -53,22 +53,61 @@ const UserMenu = ({ user }: { user: any }) => {
 
         <Separator className="my-2" />
 
-        {/* Sidebar Options */}
+        {/* Refined Meta Options */}
+
         <div className="flex flex-col gap-2">
           <SheetClose asChild>
-            <Button variant="default" className="justify-start gap-2">
-              <User className="h-4 w-4" />
-              Profile
+            <Button variant="default" className="justify-start gap-2" asChild>
+              <a href="/dashboard/profile">
+                <User className="h-4 w-4" /> My Profile
+              </a>
             </Button>
           </SheetClose>
+          <SheetClose asChild>
+            <Button variant="default" className="justify-start gap-2" asChild>
+              <a href="/dashboard/projects">
+                <User className="h-4 w-4" /> Projects
+              </a>
+            </Button>
+          </SheetClose>
+          <SheetClose asChild>
+            <Button variant="default" className="justify-start gap-2" asChild>
+              <a href="/dashboard/collaborations">
+                <User className="h-4 w-4" /> Collaborations
+              </a>
+            </Button>
+          </SheetClose>
+          <SheetClose asChild>
+            <Button variant="default" className="justify-start gap-2" asChild>
+              <a href="/dashboard/chats">
+                <User className="h-4 w-4" /> Chats
+              </a>
+            </Button>
+          </SheetClose>
+          {/* show contributing milestones inside achievements */}
+          <SheetClose asChild>
+            <Button variant="default" className="justify-start gap-2" asChild>
+              <a href="/dashboard/achievements">
+                <User className="h-4 w-4" /> Achievements
+              </a>
+            </Button>
+          </SheetClose>
+          <SheetClose asChild>
+            <Button variant="default" className="justify-start gap-2" asChild>
+              <a href="/dashboard/activity">
+                <User className="h-4 w-4" /> Activity
+              </a>
+            </Button>
+          </SheetClose>
+          {/* Add more as needed */}
 
           <SheetClose asChild>
-            <Button variant="default" className="justify-start gap-2">
-              <Settings className="h-4 w-4" />
-              Settings
+            <Button variant="default" className="justify-start gap-2" asChild>
+              <a href="/dashboard/settings">
+                <Settings className="h-4 w-4" /> Settings
+              </a>
             </Button>
           </SheetClose>
-
           <SheetClose asChild>
             <LogoutConfirmModal
               triggerLabel={

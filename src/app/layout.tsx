@@ -39,9 +39,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <SessionProviderWrapper>{children}</SessionProviderWrapper>
+        <SessionProviderWrapper>
+            {children}
+        </SessionProviderWrapper>
         <Toaster/>
       </body>
     </html>
   );
 }
+
