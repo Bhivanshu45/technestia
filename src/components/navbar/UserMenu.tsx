@@ -58,28 +58,28 @@ const UserMenu = ({ user }: { user: any }) => {
         <div className="flex flex-col gap-2">
           <SheetClose asChild>
             <Button variant="default" className="justify-start gap-2" asChild>
-              <a href="/dashboard/profile">
+              <a href="/profile">
                 <User className="h-4 w-4" /> My Profile
               </a>
             </Button>
           </SheetClose>
           <SheetClose asChild>
             <Button variant="default" className="justify-start gap-2" asChild>
-              <a href="/dashboard/projects">
+              <a href="/projects">
                 <User className="h-4 w-4" /> Projects
               </a>
             </Button>
           </SheetClose>
           <SheetClose asChild>
             <Button variant="default" className="justify-start gap-2" asChild>
-              <a href="/dashboard/collaborations">
+              <a href="/collaborations">
                 <User className="h-4 w-4" /> Collaborations
               </a>
             </Button>
           </SheetClose>
           <SheetClose asChild>
             <Button variant="default" className="justify-start gap-2" asChild>
-              <a href="/dashboard/chats">
+              <a href="/chats">
                 <User className="h-4 w-4" /> Chats
               </a>
             </Button>
@@ -87,14 +87,14 @@ const UserMenu = ({ user }: { user: any }) => {
           {/* show contributing milestones inside achievements */}
           <SheetClose asChild>
             <Button variant="default" className="justify-start gap-2" asChild>
-              <a href="/dashboard/achievements">
+              <a href="/achievements">
                 <User className="h-4 w-4" /> Achievements
               </a>
             </Button>
           </SheetClose>
           <SheetClose asChild>
             <Button variant="default" className="justify-start gap-2" asChild>
-              <a href="/dashboard/activity">
+              <a href="/activity">
                 <User className="h-4 w-4" /> Activity
               </a>
             </Button>
@@ -103,7 +103,7 @@ const UserMenu = ({ user }: { user: any }) => {
 
           <SheetClose asChild>
             <Button variant="default" className="justify-start gap-2" asChild>
-              <a href="/dashboard/settings">
+              <a href="/settings">
                 <Settings className="h-4 w-4" /> Settings
               </a>
             </Button>

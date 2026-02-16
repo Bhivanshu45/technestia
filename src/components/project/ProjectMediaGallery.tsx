@@ -9,9 +9,10 @@ interface MediaItem {
 
 interface ProjectMediaGalleryProps {
   media: MediaItem[];
+  className?: string;
 }
 
-const ProjectMediaGallery: React.FC<ProjectMediaGalleryProps> = ({ media }) => {
+const ProjectMediaGallery: React.FC<ProjectMediaGalleryProps> = ({ media, className }) => {
   const [sliderRef] = useKeenSlider<HTMLDivElement>({
     loop: true,
     mode: "snap",
@@ -29,7 +30,7 @@ const ProjectMediaGallery: React.FC<ProjectMediaGalleryProps> = ({ media }) => {
   return (
     <div
       ref={sliderRef}
-      className="keen-slider w-full max-w-3xl rounded-lg overflow-hidden mb-6"
+      className={`keen-slider w-full rounded-xl overflow-hidden ${className || "max-w-5xl"}`}
     >
       {media.map((item, idx) => (
         <div

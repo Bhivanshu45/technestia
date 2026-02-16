@@ -87,9 +87,12 @@ export async function GET(
 
     // transform collaborators data
     const collaborators = collaborations.map((collab) => ({
+      id: collab.id,
+      createdAt: collab.createdAt,
       ...(hasFullAccess && {
         accessLevel: collab.accessLevel,
         status: collab.status,
+        invitedBy: collab.invitedBy,
       }),
       user: collab.user,
       inviter: collab.inviter || null,

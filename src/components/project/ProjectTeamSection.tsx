@@ -14,26 +14,26 @@ interface ProjectTeamSectionProps {
 
 const ProjectTeamSection: React.FC<ProjectTeamSectionProps> = ({ creator, collaborators }) => {
   return (
-    <section className="w-full flex flex-col items-center justify-center pb-8 px-2">
-      <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6">
+    <section className="w-full flex flex-col items-center justify-center pb-10 px-4">
+      <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Creator Card */}
-        <div className="bg-[#232326] border border-zinc-800 rounded-lg p-5 flex flex-col gap-2 shadow-sm">
-          <div className="text-xs text-zinc-400 font-medium tracking-wide mb-2">Created by</div>
+        <div className="bg-zinc-900/70 border border-zinc-800 rounded-2xl p-6 flex flex-col gap-3 shadow-sm">
+          <div className="text-xs text-zinc-400 font-medium tracking-wide">Created by</div>
           <div className="flex items-center gap-4">
             <img
               src={creator.image || "/default-avatar.png"}
               alt={creator.name}
-              className="w-12 h-12 rounded-full border-2 border-blue-600 shadow"
+              className="w-12 h-12 rounded-full border-2 border-blue-500/70 shadow"
             />
             <div>
-              <div className="text-lg font-bold text-white leading-tight">{creator.name}</div>
+              <div className="text-base font-semibold text-white leading-tight">{creator.name}</div>
               <div className="text-xs text-blue-400 font-mono">@{creator.username}</div>
             </div>
           </div>
         </div>
         {/* Collaborators Card */}
-        <div className="bg-[#232326] border border-zinc-800 rounded-lg p-5 flex flex-col gap-2 shadow-sm w-full">
-          <div className="text-xs text-zinc-400 mb-2 font-medium tracking-wide">
+        <div className="bg-zinc-900/70 border border-zinc-800 rounded-2xl p-6 flex flex-col gap-3 shadow-sm w-full">
+          <div className="text-xs text-zinc-400 font-medium tracking-wide">
             Collaborators ({collaborators.length})
           </div>
           <div className="flex flex-wrap gap-3 w-full">
@@ -41,7 +41,7 @@ const ProjectTeamSection: React.FC<ProjectTeamSectionProps> = ({ creator, collab
               <span className="text-xs text-zinc-500">No collaborators yet.</span>
             )}
             {collaborators.slice(0, 4).map((user) => (
-              <div key={user.id} className="flex items-center gap-2 bg-[#18181b] border border-zinc-700 px-3 py-1 rounded-lg shadow-sm flex-1 min-w-[180px]">
+              <div key={user.id} className="flex items-center gap-2 bg-zinc-950/70 border border-zinc-800 px-3 py-2 rounded-lg shadow-sm flex-1 min-w-[180px]">
                 <img
                   src={user.image || "/default-avatar.png"}
                   alt={user.name}

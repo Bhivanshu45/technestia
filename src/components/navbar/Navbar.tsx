@@ -9,7 +9,7 @@ import UserMenu from "./UserMenu";
 const Navbar = () => {
   const { data: session } = useSession();
   return (
-    <nav className="w-full flex items-center text-white bg-[#0D0D0D] border-b-2 border-[#52525B]">
+    <nav className="fixed top-0 left-0 right-0 z-50 w-full flex items-center text-white bg-[#0D0D0D] border-b-2 border-[#52525B]">
       <div className="w-full flex flex-col justify-center items-center py-2">
         <div className="w-[97%] px-2 flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-2">

@@ -2,6 +2,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Separator } from "@/components/ui/separator";
 
 type SidebarOption = { label: string; href: string };
 const sidebarOptions: Record<string, SidebarOption[]> = {
@@ -23,20 +24,13 @@ const sidebarOptions: Record<string, SidebarOption[]> = {
     { label: "Delete Account", href: "/profile/delete-account" },
   ],
   collaborations: [
-    { label: "Active Collaborations", href: "/collaborations" },
-    {
-      label: "Collaboration Invitations",
-      href: "/collaborations/invitations",
-    },
-    {
-      label: "Collaboration Requests",
-      href: "/collaborations/requests",
-    },
-    {
-      label: "Collaboration History",
-      href: "/collaborations/history",
-    },
-    { label: "Pending Actions", href: "/collaborations/pending" },
+    { label: "Overview", href: "/collaborations" },
+    { label: "Join Project", href: "/collaborations/join" },
+    { label: "Invites (Incoming)", href: "/collaborations/invitations" },
+    { label: "Requests (Incoming)", href: "/collaborations/requests" },
+    { label: "Team Management", href: "/collaborations/pending" },
+    { label: "My Requests", href: "/collaborations/my-requests" },
+    { label: "History", href: "/collaborations/history" },
   ],
   activity: [
     { label: "Activity Log", href: "/activity" },
@@ -73,29 +67,42 @@ const sidebarOptions: Record<string, SidebarOption[]> = {
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
-  // Determine meta option from pathname
-  const meta = pathname?.split("/")[2] || "projects";
+  const section = pathname?.split("/")[1] || "projects";
   const options: SidebarOption[] =
-    sidebarOptions[meta] || sidebarOptions["projects"];
+    sidebarOptions[section] || sidebarOptions["projects"];
   return (
-    <aside className="w-64 min-h-screen bg-[#232326] border-r border-zinc-800 flex flex-col py-8 px-4">
-      <div className="mb-8 text-xl font-bold text-white tracking-tight capitalize">
-        {meta.replace(/-/g, " ")}
+    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#232326] border-r border-zinc-800 flex flex-col py-6 px-4 overflow-y-auto z-40">
+      <div className="text-lg font-bold text-white tracking-tight capitalize mt-[88px] mb-4">
+        {section.replace(/-/g, " ")}
       </div>
+      <Separator className="mb-6 bg-zinc-700" />
       <nav className="flex flex-col gap-2">
-        {options.map((item: SidebarOption) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors text-base ${
-              pathname === item.href
-                ? "bg-blue-700 text-white"
-                : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
-            }`}
-          >
-            {item.label}
-          </Link>
-        ))}
+        {options.map((item: SidebarOption) => {
+          // Exact match OR parent of detail page (e.g., /projects matches /projects/123)
+          const pathParts = pathname?.split("/").filter(Boolean) || [];
+          const itemParts = item.href.split("/").filter(Boolean) || [];
+          
+          const isExactMatch = pathname === item.href;
+          const isDetailPage = 
+            pathParts.length === itemParts.length + 1 && 
+            pathParts[itemParts.length] !== "" &&
+            !isNaN(Number(pathParts[itemParts.length]));
+          const isActive = isExactMatch || (isDetailPage && pathname?.startsWith(item.href + "/"));
+          
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors text-base ${
+                isActive
+                  ? "bg-blue-700 text-white"
+                  : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
+              }`}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
       </nav>
     </aside>
   );

@@ -26,8 +26,7 @@ const LogoutConfirmModal = ({
   const router = useRouter();
 
   const logoutHandler = async () => {
-    await signOut({ redirect: false });
-    router.replace("/");
+    await signOut({ callbackUrl: "/" });
   };
 
   return (
