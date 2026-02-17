@@ -20,3 +20,7 @@ export interface PublicProfileUser {
   image: string | null;
   bio: string | null;
 }
+
+export interface PublicProfileUserWithPoints extends PublicProfileUser {
+  achievementPoints: number;
+}

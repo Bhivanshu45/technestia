@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { LogOut, Settings, User, X } from "lucide-react";
+import { LogOut, Settings, User, X, FolderOpen, Users, MessageCircle, Trophy, Activity } from "lucide-react";
 import LogoutConfirmModal from "../common/LogoutConfirmModal";
 import { Separator } from "@/components/ui/separator";
 
@@ -66,21 +66,21 @@ const UserMenu = ({ user }: { user: any }) => {
           <SheetClose asChild>
             <Button variant="default" className="justify-start gap-2" asChild>
               <a href="/projects">
-                <User className="h-4 w-4" /> Projects
+                <FolderOpen className="h-4 w-4" /> Projects
               </a>
             </Button>
           </SheetClose>
           <SheetClose asChild>
             <Button variant="default" className="justify-start gap-2" asChild>
               <a href="/collaborations">
-                <User className="h-4 w-4" /> Collaborations
+                <Users className="h-4 w-4" /> Collaborations
               </a>
             </Button>
           </SheetClose>
           <SheetClose asChild>
             <Button variant="default" className="justify-start gap-2" asChild>
-              <a href="/chats">
-                <User className="h-4 w-4" /> Chats
+              <a href="/chat">
+                <MessageCircle className="h-4 w-4" /> Chats
               </a>
             </Button>
           </SheetClose>
@@ -88,14 +88,14 @@ const UserMenu = ({ user }: { user: any }) => {
           <SheetClose asChild>
             <Button variant="default" className="justify-start gap-2" asChild>
               <a href="/achievements">
-                <User className="h-4 w-4" /> Achievements
+                <Trophy className="h-4 w-4" /> Achievements
               </a>
             </Button>
           </SheetClose>
           <SheetClose asChild>
             <Button variant="default" className="justify-start gap-2" asChild>
               <a href="/activity">
-                <User className="h-4 w-4" /> Activity
+                <Activity className="h-4 w-4" /> Activity
               </a>
             </Button>
           </SheetClose>

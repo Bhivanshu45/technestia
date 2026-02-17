@@ -49,6 +49,10 @@ const sidebarOptions: Record<string, SidebarOption[]> = {
   ],
   achievements: [
     {
+      label: "Overview",
+      href: "/achievements",
+    },
+    {
       label: "Milestones Completed",
       href: "/achievements/milestones",
     },
@@ -61,6 +65,10 @@ const sidebarOptions: Record<string, SidebarOption[]> = {
       label: "Contribution Stats",
       href: "/achievements/contributions",
     },
+  ],
+  chat: [
+    { label: "Messages", href: "/chat" },
+    { label: "New Chat", href: "/chat/new" },
   ],
   chats: [{ label: "Chats", href: "/chats" }],
 };
@@ -93,9 +101,9 @@ export default function DashboardSidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors text-base ${
+              className={`px-4 py-2 rounded-lg font-medium transition-colors text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#232326] ${
                 isActive
-                  ? "bg-blue-700 text-white"
+                  ? "bg-blue-700 text-white shadow-sm"
                   : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
               }`}
             >
