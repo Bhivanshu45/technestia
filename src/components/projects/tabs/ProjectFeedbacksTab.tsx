@@ -7,9 +7,8 @@ import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import EmptyState from "@/components/common/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageCircle, ThumbsUp, Pencil, Trash2, Plus } from "lucide-react";
+import { MessageCircle, ThumbsUp, Pencil, Trash2, Plus, Star } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 
@@ -30,28 +29,28 @@ export default function ProjectFeedbacksTab({ projectId }: any) {
   const [showDialog, setShowDialog] = useState(false);
   const [editingFeedbackId, setEditingFeedbackId] = useState<number | null>(null);
   const [content, setContent] = useState("");
-  const [rating, setRating] = useState("5");
+  const [rating, setRating] = useState(5);
 
   const myFeedback = feedbacks.find((feedback: any) => feedback.createdById === currentUserId);
 
   const openCreateDialog = () => {
     setEditingFeedbackId(null);
     setContent("");
-    setRating("5");
+    setRating(5);
     setShowDialog(true);
   };
 
   const openEditDialog = (feedback: any) => {
     setEditingFeedbackId(feedback.id);
     setContent(feedback.content || "");
-    setRating(String(feedback.rating ?? 5));
+    setRating(Number(feedback.rating ?? 5));
     setShowDialog(true);
   };
 
   const handleSubmitFeedback = async () => {
     const payload = {
       content: content.trim(),
-      rating: Number(rating),
+      rating,
     };
 
     if (!payload.content) {
@@ -247,17 +246,30 @@ export default function ProjectFeedbacksTab({ projectId }: any) {
             />
             <div>
               <p className="text-sm text-zinc-400 mb-2">Rating</p>
-              <Input
-                type="number"
-                min={1}
-                max={5}
-                value={rating}
-                onChange={(e) => setRating(e.target.value)}
-              />
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setRating(value)}
+                    className="rounded-md p-1 transition-transform hover:scale-105"
+                    aria-label={`Set rating to ${value}`}
+                  >
+                    <Star
+                      className={`h-6 w-6 ${value <= rating ? "fill-yellow-400 text-yellow-400" : "text-zinc-600"}`}
+                    />
+                  </button>
+                ))}
+                <span className="ml-2 text-sm text-zinc-400">{rating}/5</span>
+              </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowDialog(false)}
+              className="border-zinc-700 bg-[#18181b] text-zinc-300 hover:bg-zinc-800 hover:text-white"
+            >
               Cancel
             </Button>
             <Button onClick={handleSubmitFeedback} disabled={isActionLoading}>

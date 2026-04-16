@@ -49,13 +49,15 @@ const Navbar = () => {
 
             {/* Notification Icon */}
             {session?.user && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="cursor-pointer hover:bg-[#52525B]"
-              >
-                <Bell className="h-8 w-8" />
-              </Button>
+              <Link href="/activity/notifications">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="cursor-pointer hover:bg-[#52525B]"
+                >
+                  <Bell className="h-8 w-8" />
+                </Button>
+              </Link>
             )}
 
             {/* Login / User Menu */}
