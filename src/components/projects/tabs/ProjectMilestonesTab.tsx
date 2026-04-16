@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import axios from "axios";
+import { toast } from "sonner";
 import { useMilestones } from "@/hooks/useMilestones";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,11 +10,39 @@ import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import EmptyState from "@/components/common/EmptyState";
 import { Plus, Calendar, CheckCircle, AlertCircle } from "lucide-react";
 
-export default function ProjectMilestonesTab({ projectId, isOwner }: any) {
-  const { milestones, isLoading } = useMilestones(projectId);
+export default function ProjectMilestonesTab({ projectId, isOwner, canApproveUpdateRequests = false }: any) {
+  const { milestones, isLoading, mutate } = useMilestones(projectId);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [approvingId, setApprovingId] = useState<number | null>(null);
 
   if (isLoading) return <LoadingSkeleton type="list" />;
+
+  const pendingRequests = (milestones || []).filter(
+    (milestone: any) => milestone.updateRequest === "PENDING"
+  );
+
+  const handleApproval = async (milestoneId: number, updateRequest: "APPROVED" | "REJECTED") => {
+    if (approvingId) return;
+    setApprovingId(milestoneId);
+
+    try {
+      const res = await axios.put(
+        `/api/project/milestones/approve-updateRequest/${milestoneId}`,
+        { updateRequest }
+      );
+
+      if (res.data.success) {
+        toast.success(updateRequest === "APPROVED" ? "Request approved" : "Request rejected");
+        await mutate();
+      } else {
+        toast.error(res.data.message || "Failed to process update request");
+      }
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to process update request");
+    } finally {
+      setApprovingId(null);
+    }
+  };
 
   const filtered =
     milestones?.filter((m: any) => {
@@ -52,6 +82,51 @@ export default function ProjectMilestonesTab({ projectId, isOwner }: any) {
 
   return (
     <div className="space-y-6">
+      {canApproveUpdateRequests && (
+        <div className="bg-[#232326] border border-zinc-800 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-white font-semibold">Pending Update Requests</h3>
+            <Badge className="bg-yellow-900 text-yellow-200">
+              {pendingRequests.length}
+            </Badge>
+          </div>
+          {pendingRequests.length === 0 ? (
+            <p className="text-sm text-zinc-400">No pending milestone update requests.</p>
+          ) : (
+            <div className="space-y-3">
+              {pendingRequests.map((milestone: any) => (
+                <div key={milestone.id} className="bg-[#18181b] border border-zinc-800 rounded-lg p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-white font-semibold">{milestone.title}</p>
+                      <p className="text-xs text-zinc-400">{milestone.description}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleApproval(milestone.id, "APPROVED")}
+                        disabled={approvingId === milestone.id}
+                      >
+                        {approvingId === milestone.id ? "Working..." : "Approve"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-zinc-700"
+                        onClick={() => handleApproval(milestone.id, "REJECTED")}
+                        disabled={approvingId === milestone.id}
+                      >
+                        {approvingId === milestone.id ? "Working..." : "Reject"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Filters and Add Button */}
       <div className="flex flex-wrap justify-between items-center gap-4 bg-[#232326] border border-zinc-800 rounded-lg p-4">
         <div className="flex gap-2">
@@ -119,6 +194,9 @@ export default function ProjectMilestonesTab({ projectId, isOwner }: any) {
                         milestone.completionStatus || milestone.status
                       )}
                     </Badge>
+                    {milestone.updateRequest === "PENDING" && (
+                      <Badge className="bg-yellow-900 text-yellow-200">Pending Approval</Badge>
+                    )}
                   </div>
                   <p className="text-[#A1A1AA] mb-3">
                     {milestone.description}

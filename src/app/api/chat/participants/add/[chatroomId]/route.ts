@@ -71,6 +71,30 @@ if (participantIds.length === 0) {
         { status: 403 }
       );
     }
+
+    const existingParticipantRows = await prisma.chatParticipant.findMany({
+      where: {
+        chatRoomId: chatroomIdNumber,
+        userId: { in: participantIds },
+      },
+      select: {
+        userId: true,
+        hasLeft: true,
+      },
+    });
+
+    const activeParticipantIds = new Set(
+      existingParticipantRows
+        .filter((row) => !row.hasLeft)
+        .map((row) => row.userId)
+    );
+
+    const leftParticipantIds = new Set(
+      existingParticipantRows
+        .filter((row) => row.hasLeft)
+        .map((row) => row.userId)
+    );
+
     const existingIds = new Set(chatroom.participants.map((p) => p.userId));
     let newParticipantsData: { userId: number; isAdmin: boolean }[] = [];
 
@@ -95,7 +119,7 @@ if (participantIds.length === 0) {
       }
 
       newParticipantsData = collaborators
-        .filter((c) => !existingIds.has(c.userId))
+        .filter((c) => !activeParticipantIds.has(c.userId))
         .map((c) => ({
           userId: c.userId,
           isAdmin: c.accessLevel === AccessLevel.FULL,
@@ -103,7 +127,7 @@ if (participantIds.length === 0) {
     } else {
       
       newParticipantsData = participantIds
-        .filter((id) => !existingIds.has(id))
+        .filter((id) => !activeParticipantIds.has(id))
         .map((id) => ({ userId: id, isAdmin: false }));
     }
 
@@ -114,13 +138,35 @@ if (participantIds.length === 0) {
       );
     }
 
-    await prisma.chatParticipant.createMany({
-      data: newParticipantsData.map((p) => ({
-        chatRoomId: chatroomIdNumber,
-        userId: p.userId,
-        isAdmin: p.isAdmin,
-       })),
-    });
+    const reactivatedParticipants = newParticipantsData.filter((p) =>
+      leftParticipantIds.has(p.userId)
+    );
+    const brandNewParticipants = newParticipantsData.filter(
+      (p) => !leftParticipantIds.has(p.userId)
+    );
+
+    for (const participant of reactivatedParticipants) {
+      await prisma.chatParticipant.updateMany({
+        where: {
+          chatRoomId: chatroomIdNumber,
+          userId: participant.userId,
+        },
+        data: {
+          hasLeft: false,
+          isAdmin: participant.isAdmin,
+        },
+      });
+    }
+
+    if (brandNewParticipants.length > 0) {
+      await prisma.chatParticipant.createMany({
+        data: brandNewParticipants.map((p) => ({
+          chatRoomId: chatroomIdNumber,
+          userId: p.userId,
+          isAdmin: p.isAdmin,
+         })),
+      });
+    }
 
     return NextResponse.json(
       {

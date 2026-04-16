@@ -87,7 +87,7 @@ export async function GET(
     const hasNextPage = messages.length > limit;
     const trimmedMessages = hasNextPage ? messages.slice(0, limit) : messages;
     const nextCursor = hasNextPage
-      ? trimmedMessages[trimmedMessages.length - 1].createdAt.toISOString()
+      ? String(trimmedMessages[trimmedMessages.length - 1].id)
       : null;
 
     // === 🟡 UNREAD INFO ===
@@ -96,6 +96,7 @@ export async function GET(
       where: {
         chatRoomId: chatroomIdNumber,
         createdAt: { gt: lastSeenAt },
+        senderId: { not: userId },
       },
     });
 
@@ -103,6 +104,7 @@ export async function GET(
       where: {
         chatRoomId: chatroomIdNumber,
         createdAt: { gt: lastSeenAt },
+        senderId: { not: userId },
       },
       orderBy: {
         createdAt: "asc",

@@ -136,12 +136,11 @@ export default function MessageInput({ onSendMessage, isSending, disabled }: Mes
         />
         <Button
           variant="ghost"
-          size="sm"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || isSending || !!selectedFile}
-          className="h-8 w-8 p-0 text-zinc-400 hover:bg-blue-600 hover:text-white transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="h-11 w-11 p-0 text-zinc-400 hover:bg-blue-600 hover:text-white transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {selectedFile ? <ImageIcon className="h-5 w-5" /> : <Paperclip className="h-5 w-5" />}
+          {selectedFile ? <ImageIcon className="h-4 w-4" /> : <Paperclip className="h-4 w-4" />}
         </Button>
 
         {/* Text Input */}
@@ -163,16 +162,15 @@ export default function MessageInput({ onSendMessage, isSending, disabled }: Mes
         <Button
           onClick={handleSend}
           disabled={disabled || isSending || (!message.trim() && !selectedFile)}
-          size="sm"
           className={cn(
-            "flex-shrink-0 bg-blue-700 hover:bg-blue-600 text-white",
+            "h-11 w-11 flex-shrink-0 bg-blue-700 hover:bg-blue-600 text-white p-0",
             (disabled || (!message.trim() && !selectedFile)) && "opacity-50 cursor-not-allowed"
           )}
         >
           {isSending ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Send className="h-5 w-5" />
+            <Send className="h-4 w-4" />
           )}
         </Button>
       </div>

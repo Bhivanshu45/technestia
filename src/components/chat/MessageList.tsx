@@ -125,7 +125,7 @@ export default function MessageList({
 
   if (isLoading && messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="h-full flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
       </div>
     );
@@ -133,7 +133,7 @@ export default function MessageList({
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center px-6">
+      <div className="h-full flex items-center justify-center px-6">
         <div className="text-center">
           <p className="text-zinc-500 text-sm">No messages yet</p>
           <p className="text-zinc-600 text-xs mt-1">Start the conversation!</p>
@@ -146,7 +146,7 @@ export default function MessageList({
     <div
       ref={messagesContainerRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto py-4"
+      className="h-full overflow-y-auto py-4"
     >
       {/* Load More Button */}
       {hasMore && (

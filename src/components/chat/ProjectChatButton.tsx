@@ -1,9 +1,10 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import { useRouter } from "next/navigation";
 import { useCreateChat } from "@/hooks/useCreateChat";
+import { useChatRooms } from "@/hooks/useChatRooms";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Loader2, Users } from "lucide-react";
+import { Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +25,12 @@ export default function ProjectChatButton({
 }: ProjectChatButtonProps) {
   const router = useRouter();
   const { createChat, isCreating } = useCreateChat();
-  const [unreadCount, setUnreadCount] = useState(0); // TODO: Get from backend
+  const { chatRooms } = useChatRooms();
+
+  const projectChat = chatRooms.find(
+    (room) => room.isGroup && Number(room.projectId) === Number(projectId)
+  );
+  const unreadCount = projectChat?.unreadCount || 0;
 
   const handleOpenProjectChat = async () => {
     try {

@@ -2,15 +2,104 @@
 
 import React, { useState } from "react";
 import { useFeedbacks } from "@/hooks/useFeedbacks";
+import { useFeedbackActions } from "@/hooks/useFeedbackActions";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import EmptyState from "@/components/common/EmptyState";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, MessageCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { MessageCircle, ThumbsUp, Pencil, Trash2, Plus } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 
 export default function ProjectFeedbacksTab({ projectId }: any) {
-  const { feedbacks, isLoading } = useFeedbacks(projectId);
+  const { data: session } = useSession();
+  const currentUserId = Number(session?.user?.id || 0);
+  const { feedbacks, isLoading, mutate } = useFeedbacks(projectId);
+  const {
+    isLoading: isActionLoading,
+    createFeedback,
+    updateFeedback,
+    deleteFeedback,
+    reactToFeedback,
+    removeReaction,
+  } = useFeedbackActions();
+
   const [sortBy, setSortBy] = useState("recent");
+  const [showDialog, setShowDialog] = useState(false);
+  const [editingFeedbackId, setEditingFeedbackId] = useState<number | null>(null);
+  const [content, setContent] = useState("");
+  const [rating, setRating] = useState("5");
+
+  const myFeedback = feedbacks.find((feedback: any) => feedback.createdById === currentUserId);
+
+  const openCreateDialog = () => {
+    setEditingFeedbackId(null);
+    setContent("");
+    setRating("5");
+    setShowDialog(true);
+  };
+
+  const openEditDialog = (feedback: any) => {
+    setEditingFeedbackId(feedback.id);
+    setContent(feedback.content || "");
+    setRating(String(feedback.rating ?? 5));
+    setShowDialog(true);
+  };
+
+  const handleSubmitFeedback = async () => {
+    const payload = {
+      content: content.trim(),
+      rating: Number(rating),
+    };
+
+    if (!payload.content) {
+      toast.error("Feedback content is required");
+      return;
+    }
+
+    try {
+      if (editingFeedbackId) {
+        await updateFeedback(editingFeedbackId, payload);
+        toast.success("Feedback updated");
+      } else {
+        await createFeedback(projectId, payload);
+        toast.success("Feedback submitted");
+      }
+
+      setShowDialog(false);
+      await mutate();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to save feedback");
+    }
+  };
+
+  const handleDeleteFeedback = async (feedbackId: number) => {
+    try {
+      await deleteFeedback(feedbackId);
+      toast.success("Feedback deleted");
+      await mutate();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to delete feedback");
+    }
+  };
+
+  const handleToggleReaction = async (feedback: any) => {
+    const myReaction = feedback.reactions?.find((reaction: any) => reaction.userId === currentUserId);
+
+    try {
+      if (myReaction) {
+        await removeReaction(feedback.id);
+      } else {
+        await reactToFeedback(feedback.id, "LIKE");
+      }
+
+      await mutate();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to update reaction");
+    }
+  };
 
   if (isLoading) return <LoadingSkeleton type="list" />;
 
@@ -29,22 +118,30 @@ export default function ProjectFeedbacksTab({ projectId }: any) {
   return (
     <div className="space-y-6">
       {/* Sort Controls */}
-      <div className="flex gap-2 bg-[#232326] border border-zinc-800 rounded-lg p-4">
-        {["recent", "helpful"].map((sort) => (
-          <Button
-            key={sort}
-            variant={sortBy === sort ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSortBy(sort)}
-            className={`${
-              sortBy === sort
-                ? "bg-blue-700 text-white border-blue-700"
-                : "bg-[#1f1f23] text-white border border-zinc-700 hover:bg-[#2a2a2f]"
-            }`}
-          >
-            {sort === "helpful" ? "Most Helpful" : "Most Recent"}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-[#232326] border border-zinc-800 rounded-lg p-4">
+        <div className="flex gap-2">
+          {["recent", "helpful"].map((sort) => (
+            <Button
+              key={sort}
+              variant={sortBy === sort ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSortBy(sort)}
+              className={`${
+                sortBy === sort
+                  ? "bg-blue-700 text-white border-blue-700"
+                  : "bg-[#1f1f23] text-white border border-zinc-700 hover:bg-[#2a2a2f]"
+              }`}
+            >
+              {sort === "helpful" ? "Most Helpful" : "Most Recent"}
+            </Button>
+          ))}
+        </div>
+        {!myFeedback && (
+          <Button onClick={openCreateDialog} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Feedback
           </Button>
-        ))}
+        )}
       </div>
 
       {/* Feedbacks List */}
@@ -89,22 +186,86 @@ export default function ProjectFeedbacksTab({ projectId }: any) {
                 {feedback.content}
               </p>
 
-              {/* Reactions */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center justify-between gap-4">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="gap-2 text-[#A1A1AA] hover:text-white"
+                  onClick={() => handleToggleReaction(feedback)}
+                  disabled={isActionLoading}
+                  className={`gap-2 ${
+                    feedback.reactions?.some((reaction: any) => reaction.userId === currentUserId)
+                      ? "text-blue-400"
+                      : "text-[#A1A1AA] hover:text-white"
+                  }`}
                 >
                   <ThumbsUp className="h-4 w-4" />
                   Helpful ({feedback.reactions?.length || 0})
                 </Button>
+
+                {feedback.createdById === currentUserId && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEditDialog(feedback)}
+                      disabled={isActionLoading}
+                      className="gap-2"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteFeedback(feedback.id)}
+                      disabled={isActionLoading}
+                      className="gap-2"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Delete
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           );
           })}
         </div>
       )}
+
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="bg-[#232326] border-zinc-800 text-zinc-100">
+          <DialogHeader>
+            <DialogTitle>{editingFeedbackId ? "Edit Feedback" : "Add Feedback"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Share your feedback..."
+              className="min-h-28"
+            />
+            <div>
+              <p className="text-sm text-zinc-400 mb-2">Rating</p>
+              <Input
+                type="number"
+                min={1}
+                max={5}
+                value={rating}
+                onChange={(e) => setRating(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitFeedback} disabled={isActionLoading}>
+              {isActionLoading ? "Saving..." : editingFeedbackId ? "Update" : "Submit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

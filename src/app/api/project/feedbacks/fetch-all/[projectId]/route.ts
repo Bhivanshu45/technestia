@@ -54,6 +54,28 @@ export async function GET(
 
     const feedbacks = await prisma.feedback.findMany({
       where: { projectId: projectIdNumber },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            image: true,
+          },
+        },
+        reactions: {
+          select: {
+            id: true,
+            type: true,
+            userId: true,
+            feedbackId: true,
+            createdAt: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
     return NextResponse.json(

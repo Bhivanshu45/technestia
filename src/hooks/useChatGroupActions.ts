@@ -14,7 +14,7 @@ export function useUpdateGroupName() {
   const updateGroupName = async ({ chatRoomId, newName }: UpdateGroupNameParams) => {
     setIsUpdating(true);
     try {
-      const response = await axiosInstance.put(`/api/chat/update/chatname/${chatRoomId}`, { name: newName });
+      const response = await axiosInstance.put(`/api/chat/update/chatname/${chatRoomId}`, { chatName: newName });
       toast.success("Group name updated");
       return response.data.data;
     } catch (error: any) {
@@ -73,7 +73,7 @@ export function useAddParticipants() {
   const addParticipants = async ({ chatRoomId, userIds }: AddParticipantsParams) => {
     setIsAdding(true);
     try {
-      const response = await axiosInstance.post(`/api/chat/participants/add/${chatRoomId}`, { userIds });
+      const response = await axiosInstance.post(`/api/chat/participants/add/${chatRoomId}`, { participantIds: userIds });
       toast.success(`Added ${userIds.length} participant(s)`);
       return response.data.data;
     } catch (error: any) {
@@ -100,7 +100,7 @@ export function useRemoveParticipant() {
     setIsRemoving(true);
     try {
       const response = await axiosInstance.delete(`/api/chat/participants/remove/${chatRoomId}`, {
-        data: { userId },
+        data: { targetUserId: userId },
       });
       toast.success("Participant removed");
       return response.data.data;

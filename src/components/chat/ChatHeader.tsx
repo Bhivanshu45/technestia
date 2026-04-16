@@ -1,27 +1,40 @@
 "use client";
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Settings, RefreshCw, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  MoreVertical,
+  RefreshCw,
+  Settings,
+  LogOut,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatRoomDetails } from "@/types/chat";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ChatHeaderProps {
   chatRoom: ChatRoomDetails | undefined;
   isLoading: boolean;
   onRefresh: () => void;
-  onOpenParticipants?: () => void;
+  onOpenSettings?: () => void;
+  onRequestLeaveOrDelete?: () => void;
+  leaveOrDeleteLabel?: string;
 }
 
 export default function ChatHeader({
   chatRoom,
   isLoading,
   onRefresh,
-  onOpenParticipants,
+  onOpenSettings,
+  onRequestLeaveOrDelete,
+  leaveOrDeleteLabel,
 }: ChatHeaderProps) {
-  const router = useRouter();
-
   const getInitials = (name: string | null | undefined) => {
     if (!name) return "?";
     return name
@@ -116,31 +129,41 @@ export default function ChatHeader({
             <RefreshCw className="h-5 w-5" />
           </Button>
 
-          {/* Participants Button (Groups Only) */}
-          {chatRoom?.isGroup && onOpenParticipants && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onOpenParticipants}
-              className="h-8 w-8 p-0 text-zinc-400 hover:bg-blue-600 hover:text-white transition-colors"
-              title="View participants"
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-zinc-400 hover:bg-blue-600 hover:text-white transition-colors"
+                title="More actions"
+              >
+                <MoreVertical className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="bg-[#232326] border-zinc-800 text-zinc-100"
             >
-              <Users className="h-5 w-5" />
-            </Button>
-          )}
-
-          {/* Settings Button (Admins Only) */}
-          {chatRoom?.isGroup && chatRoom.isAdmin && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push(`/chat/${chatRoom.id}/settings`)}
-              className="h-8 w-8 p-0 text-zinc-400 hover:bg-blue-600 hover:text-white transition-colors"
-              title="Group settings"
-            >
-              <Settings className="h-5 w-5" />
-            </Button>
-          )}
+              {chatRoom?.isGroup && chatRoom.isAdmin && onOpenSettings && (
+                <DropdownMenuItem
+                  onClick={onOpenSettings}
+                  className="cursor-pointer gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  Group settings
+                </DropdownMenuItem>
+              )}
+              {onRequestLeaveOrDelete && (
+                <DropdownMenuItem
+                  onClick={onRequestLeaveOrDelete}
+                  className="cursor-pointer gap-2 text-red-400 focus:text-red-300"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {leaveOrDeleteLabel || "Leave chat"}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>

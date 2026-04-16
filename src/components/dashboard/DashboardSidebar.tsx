@@ -36,17 +36,6 @@ const sidebarOptions: Record<string, SidebarOption[]> = {
     { label: "Activity Log", href: "/activity" },
     { label: "Notifications", href: "/activity/notifications" },
   ],
-  settings: [
-    { label: "General Settings", href: "/settings" },
-    { label: "Social Links", href: "/settings/social-links" },
-    { label: "Media/Screenshots", href: "/settings/media" },
-    { label: "Privacy Settings", href: "/settings/privacy" },
-    {
-      label: "Notification Preferences",
-      href: "/settings/notifications",
-    },
-    { label: "Account Preferences", href: "/settings/account" },
-  ],
   achievements: [
     {
       label: "Overview",
@@ -70,7 +59,6 @@ const sidebarOptions: Record<string, SidebarOption[]> = {
     { label: "Messages", href: "/chat" },
     { label: "New Chat", href: "/chat/new" },
   ],
-  chats: [{ label: "Chats", href: "/chats" }],
 };
 
 export default function DashboardSidebar() {

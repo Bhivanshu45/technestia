@@ -10,4 +10,12 @@ export const sendMessageSchema = z.object({
     })
     .nullable()
     .optional(),
-});
+}).refine(
+  (data) =>
+    (data.messageType === "TEXT" || data.messageType === "LINK")
+      ? Boolean(data.content && data.content.trim())
+      : Boolean(data.file),
+  {
+    message: "Message content or file is required",
+  }
+);

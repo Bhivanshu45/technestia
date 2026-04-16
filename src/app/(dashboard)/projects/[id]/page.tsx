@@ -53,6 +53,7 @@ export default function ProjectDetailPage() {
 
   const isOwner = project.userId === parseInt(session?.user?.id || "0");
   const hasAccess = isOwner || Boolean(project.accessLevel);
+  const canManageProject = isOwner || project.accessLevel === "FULL";
 
   const handleRequestToJoin = async () => {
     if (isRequesting) return;
@@ -111,7 +112,11 @@ export default function ProjectDetailPage() {
         </TabsContent>
 
         <TabsContent value="milestones" className="space-y-6">
-          <ProjectMilestonesTab projectId={projectId} isOwner={isOwner} />
+          <ProjectMilestonesTab
+            projectId={projectId}
+            isOwner={isOwner}
+            canApproveUpdateRequests={canManageProject}
+          />
         </TabsContent>
 
         <TabsContent value="feedbacks" className="space-y-6">
@@ -122,9 +127,9 @@ export default function ProjectDetailPage() {
           <ProjectActivityTab projectId={projectId} />
         </TabsContent>
 
-        {isOwner && (
+        {canManageProject && (
           <TabsContent value="settings" className="space-y-6">
-            <ProjectSettingsTab project={project} onUpdate={mutate} />
+            <ProjectSettingsTab project={project} onUpdate={mutate} isOwner={isOwner} />
           </TabsContent>
         )}
       </Tabs>

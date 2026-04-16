@@ -5,11 +5,23 @@ import { ExternalLink, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import ProjectChatButton from "@/components/chat/ProjectChatButton";
 
 export default function ProjectOverviewTab({ project, isOwner }: any) {
   const owner = project.creator || project.user;
+  const isCollaborator = isOwner || Boolean(project.accessLevel);
   return (
     <div className="space-y-5">
+      {isCollaborator && (
+        <div className="bg-[#232326] border border-zinc-800 rounded-lg p-4 md:p-5">
+          <ProjectChatButton
+            projectId={project.id}
+            projectTitle={project.title}
+            isCollaborator={isCollaborator}
+          />
+        </div>
+      )}
+
       {/* Top grid: About + Links / Tech Stack */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="bg-[#232326] border border-zinc-800 rounded-lg p-4 md:p-5 space-y-3">

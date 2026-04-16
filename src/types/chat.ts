@@ -3,6 +3,7 @@ export interface ChatRoom {
   name: string | null;
   image: string | null;
   isGroup: boolean;
+  projectId?: number | null;
   latestMessage: string | null;
   latestMessageSender: string | null;
   latestMessageAt: Date | null;

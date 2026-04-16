@@ -91,6 +91,7 @@ export async function GET() {
           name,
           image,
           isGroup: chat.isGroup,
+          projectId: chat.project?.id || null,
           latestMessage: latestMsg?.message || null,
           latestMessageSender: latestMsg?.sender?.name || null,
           latestMessageAt: latestMsg?.createdAt || null,

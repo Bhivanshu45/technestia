@@ -99,15 +99,7 @@ const UserMenu = ({ user }: { user: any }) => {
               </a>
             </Button>
           </SheetClose>
-          {/* Add more as needed */}
 
-          <SheetClose asChild>
-            <Button variant="default" className="justify-start gap-2" asChild>
-              <a href="/settings">
-                <Settings className="h-4 w-4" /> Settings
-              </a>
-            </Button>
-          </SheetClose>
           <SheetClose asChild>
             <LogoutConfirmModal
               triggerLabel={

@@ -10,6 +10,7 @@ import {
   useRemoveParticipant,
 } from "@/hooks/useChatGroupActions";
 import { useAllUsers } from "@/hooks/useAllUsers";
+import { useProjectCollaborators } from "@/hooks/useProjectCollaborators";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,7 @@ export default function GroupSettingsPage({ params }: { params: { id: string } }
   const { chatRoom, isLoading: isLoadingRoom, isError: roomError, mutate: mutateRoom } = useChatRoom(chatRoomId);
   const { participants, isLoading: isLoadingParticipants, isError: participantsError, mutate: mutateParticipants } = useChatParticipants(chatRoomId);
   const { users, isLoading: isLoadingUsers } = useAllUsers();
+  const { collaborators, isLoading: isLoadingCollaborators } = useProjectCollaborators(chatRoom?.projectId ?? null);
 
   const { updateGroupName, isUpdating: isUpdatingName } = useUpdateGroupName();
   const { updateGroupAvatar, isUpdating: isUpdatingAvatar } = useUpdateGroupAvatar();
@@ -48,6 +50,7 @@ export default function GroupSettingsPage({ params }: { params: { id: string } }
   const [showAddMembersModal, setShowAddMembersModal] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [addMembersError, setAddMembersError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -107,13 +110,16 @@ export default function GroupSettingsPage({ params }: { params: { id: string } }
     }
 
     try {
+      setAddMembersError(null);
       await addParticipants({ chatRoomId, userIds: selectedUserIds });
       await mutateParticipants();
       setShowAddMembersModal(false);
       setSelectedUserIds([]);
       setSearchQuery("");
-    } catch (error) {
-      // Error handled in hook
+    } catch (error: any) {
+      setAddMembersError(
+        error?.response?.data?.message || "Failed to add participants"
+      );
     }
   };
 
@@ -129,8 +135,17 @@ export default function GroupSettingsPage({ params }: { params: { id: string } }
     }
   };
 
+  const eligibleProjectUserIds = new Set(
+    collaborators
+      .filter((entry) => (entry.status ? entry.status === "ACCEPTED" : true))
+      .map((entry) => entry.user.id)
+  );
+
+  const isProjectGroup = Boolean(chatRoom?.projectId);
+
   // Filter users for add members modal
   const availableUsers = users?.filter((user) => {
+    if (isProjectGroup && !eligibleProjectUserIds.has(user.id)) return false;
     const isAlreadyMember = participants?.some((p) => p.userId === user.id);
     const matchesSearch = user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           user.name?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -328,7 +343,19 @@ export default function GroupSettingsPage({ params }: { params: { id: string } }
               onChange={(e) => setSearchQuery(e.target.value)}
             />
 
-            {isLoadingUsers ? (
+            {addMembersError && (
+              <p className="text-sm text-red-400 bg-red-950/20 border border-red-900/50 rounded-md px-3 py-2">
+                {addMembersError}
+              </p>
+            )}
+
+            {isProjectGroup && (
+              <p className="text-xs text-zinc-400">
+                Only accepted collaborators of this project can be added to this group.
+              </p>
+            )}
+
+            {isLoadingUsers || (isProjectGroup && isLoadingCollaborators) ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
               </div>
@@ -372,7 +399,13 @@ export default function GroupSettingsPage({ params }: { params: { id: string } }
           </div>
 
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowAddMembersModal(false)}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowAddMembersModal(false);
+                setAddMembersError(null);
+              }}
+            >
               Cancel
             </Button>
             <Button onClick={handleAddMembers} disabled={isAdding || selectedUserIds.length === 0}>

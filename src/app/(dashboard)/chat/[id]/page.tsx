@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
+import axios from "axios";
 import { useChatRoom } from "@/hooks/useChatRoom";
 import { useChatMessages } from "@/hooks/useChatMessages";
 import { useSendMessage } from "@/hooks/useSendMessage";
@@ -14,6 +15,7 @@ import ForwardMessageModal from "@/components/chat/ForwardMessageModal";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ChatMessage } from "@/types/chat";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export default function ChatRoomPage() {
   const { data: session } = useSession();
@@ -40,6 +42,8 @@ export default function ChatRoomPage() {
   const [hasMarkedAsRead, setHasMarkedAsRead] = useState(false);
   const [forwardModalOpen, setForwardModalOpen] = useState(false);
   const [messageToForward, setMessageToForward] = useState<ChatMessage | null>(null);
+  const [showChatActionDialog, setShowChatActionDialog] = useState(false);
+  const [isChatActionLoading, setIsChatActionLoading] = useState(false);
 
   const currentUserId = session?.user?.id ? Number(session.user.id) : 0;
 
@@ -170,22 +174,74 @@ export default function ChatRoomPage() {
     if (!messageToForward || !session?.user?.id) return;
 
     try {
-      // Use sendMessage to forward the message content
-      const { sendMessage: sendForward } = useSendMessage(targetChatId);
-      
-      const messageData: any = {
+      const payload: any = {
         messageType: messageToForward.messageType,
-        content: messageToForward.message,
       };
 
-      await sendForward(messageData);
+      if (messageToForward.messageType === "IMAGE" || messageToForward.messageType === "FILE") {
+        const mediaResponse = await fetch(messageToForward.message);
+        if (!mediaResponse.ok) {
+          throw new Error("Failed to load media for forwarding");
+        }
+
+        const blob = await mediaResponse.blob();
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        payload.file = {
+          buffer: base64.split(",")[1],
+          type: blob.type || (messageToForward.messageType === "IMAGE" ? "image/png" : "application/octet-stream"),
+        };
+      } else {
+        payload.content = messageToForward.message;
+      }
+
+      await axios.post(`/api/chat/messages/send/${targetChatId}`, payload);
       toast.success("Message forwarded");
       setForwardModalOpen(false);
       setMessageToForward(null);
     } catch (error: any) {
-      toast.error("Failed to forward message");
+      toast.error(error.response?.data?.message || error.message || "Failed to forward message");
     }
   };
+
+  const handleOpenChatSettings = () => {
+    router.push(`/chat/${chatRoomId}/settings`);
+  };
+
+  const handleRequestLeaveOrDelete = () => {
+    setShowChatActionDialog(true);
+  };
+
+  const handleLeaveOrDeleteChat = async () => {
+    if (!chatRoomId || isChatActionLoading) return;
+
+    setIsChatActionLoading(true);
+    try {
+      const response = await axios.delete(`/api/chat/delete/${chatRoomId}`);
+      if (response.data.success) {
+        toast.success(response.data.message || "Chat updated successfully");
+        router.push("/chat");
+      } else {
+        toast.error(response.data.message || "Failed to update chat");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update chat");
+    } finally {
+      setIsChatActionLoading(false);
+      setShowChatActionDialog(false);
+    }
+  };
+
+  const leaveOrDeleteLabel = chatRoom?.isGroup
+    ? chatRoom.isAdmin
+      ? "Delete group"
+      : "Leave group"
+    : "Leave chat";
 
   if (!session?.user) {
     router.push("/auth/sign-in");
@@ -209,18 +265,22 @@ export default function ChatRoomPage() {
   }
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-[#18181b]" style={{ top: "88px", left: "256px", right: 0, bottom: 0 }}>
-      {/* Header - Fixed at top (doesn't scroll) */}
+    <div
+      className="fixed inset-0 flex flex-col overflow-hidden bg-[#18181b]"
+      style={{ top: "88px", left: "256px", right: 0, bottom: 0 }}
+    >
       <div className="flex-shrink-0 border-b border-zinc-800 z-10">
         <ChatHeader
           chatRoom={chatRoom}
           isLoading={isLoadingRoom}
           onRefresh={handleRefresh}
+          onOpenSettings={handleOpenChatSettings}
+          onRequestLeaveOrDelete={handleRequestLeaveOrDelete}
+          leaveOrDeleteLabel={leaveOrDeleteLabel}
         />
       </div>
 
-      {/* Messages - Only this scrolls */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <MessageList
           messages={messages}
           currentUserId={currentUserId}
@@ -235,7 +295,6 @@ export default function ChatRoomPage() {
         />
       </div>
 
-      {/* Input - Fixed at bottom (doesn't scroll) */}
       <div className="flex-shrink-0 border-t border-zinc-800 bg-[#18181b]">
         <MessageInput
           onSendMessage={handleSendMessage}
@@ -243,7 +302,6 @@ export default function ChatRoomPage() {
         />
       </div>
 
-      {/* Forward Modal */}
       {messageToForward && (
         <ForwardMessageModal
           isOpen={forwardModalOpen}
@@ -256,6 +314,27 @@ export default function ChatRoomPage() {
           currentChatId={chatRoomId || 0}
         />
       )}
+
+      <AlertDialog open={showChatActionDialog} onOpenChange={setShowChatActionDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {chatRoom?.isGroup && chatRoom.isAdmin ? "Delete group?" : "Leave chat?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {chatRoom?.isGroup && chatRoom.isAdmin
+                ? "This will permanently delete the group, its messages, and all participant access."
+                : "This will remove you from the chat. You can return only if someone creates or invites you again."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isChatActionLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLeaveOrDeleteChat} disabled={isChatActionLoading}>
+              {isChatActionLoading ? "Working..." : leaveOrDeleteLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
