@@ -35,6 +35,7 @@ app.prepare().then(() => {
 
     socket.on("joinUser",({userId}) => {
       if(!userId)return;
+      socket.data.userId = Number(userId);
       socket.join("user:" + userId);
     })
 

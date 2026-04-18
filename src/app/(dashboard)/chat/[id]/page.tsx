@@ -72,8 +72,23 @@ export default function ChatRoomPage() {
     if (chatRoomId && !hasMarkedAsRead && !isLoadingMessages) {
       markAsRead(chatRoomId);
       setHasMarkedAsRead(true);
+      
+      // Clear unread divider by setting unreadInfo to empty
+      mutateMessages(
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            unreadInfo: {
+              unreadCount: 0,
+              firstUnreadMessageId: null,
+            },
+          };
+        },
+        { revalidate: false }
+      );
     }
-  }, [chatRoomId, hasMarkedAsRead, isLoadingMessages, markAsRead]);
+  }, [chatRoomId, hasMarkedAsRead, isLoadingMessages, markAsRead, mutateMessages]);
 
   useEffect(() => {
     for (const msg of messages) {
@@ -106,6 +121,23 @@ export default function ChatRoomPage() {
         ...incoming,
         sending: false,
       });
+
+      // Clear unread divider info since message is visible
+      mutateMessages(
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            unreadInfo: {
+              unreadCount: 0,
+              firstUnreadMessageId: null,
+            },
+          };
+        },
+        { revalidate: false }
+      );
+
+      markAsRead(chatRoomId);
     };
 
     socket.on("chat:message:new", handleNewMessage);
@@ -114,7 +146,7 @@ export default function ChatRoomPage() {
       socket.emit("leaveRoom", { chatRoomId });
       socket.off("chat:message:new", handleNewMessage);
     };
-  }, [chatRoomId, session?.user?.id, addOptimisticMessage]);
+  }, [chatRoomId, session?.user?.id, addOptimisticMessage, markAsRead, mutateMessages]);
 
   const handleSendMessage = async (
     content: string,

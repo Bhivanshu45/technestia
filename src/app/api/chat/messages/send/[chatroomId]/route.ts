@@ -129,20 +129,27 @@ export async function POST(
       io.to("chat:" + chatroomIdNumber).emit("chat:message:new", newMessage);
     }
 
-    const activeParticipants = await prisma.chatParticipant.findMany({
-      where: {
-        chatRoomId: chatroomIdNumber,
-        hasLeft: false,
-      },
-      select: {
-        userId: true,
-      },
-    });
-
     if (io) {
+      const activeSockets = await io.in("chat:" + chatroomIdNumber).fetchSockets();
+      const activeUserIds = new Set(
+        activeSockets
+          .map((connectedSocket: any) => connectedSocket.data?.userId)
+          .filter((connectedUserId: unknown) => typeof connectedUserId === "number"),
+      );
+
+      const activeParticipants = await prisma.chatParticipant.findMany({
+        where: {
+          chatRoomId: chatroomIdNumber,
+          hasLeft: false,
+        },
+        select: {
+          userId: true,
+        },
+      });
+
       for (const p of activeParticipants) {
         const unreadCount =
-          p.userId === userId
+          p.userId === userId || activeUserIds.has(p.userId)
             ? 0
             : await getUnreadMessageCount({
                 chatRoomId: chatroomIdNumber,

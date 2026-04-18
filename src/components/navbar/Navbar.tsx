@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import SearchBar from "../common/SearchBar";
 import { Button } from "../ui/button";
 import { Bell, MessageCircle } from "lucide-react";
@@ -11,18 +12,14 @@ import { getSocket } from "@/socket";
 
 const Navbar = () => {
   const { data: session } = useSession();
+  const pathname = usePathname();
   const { totalUnreadCount, mutate } = useChatRooms();
+  const currentChatRoomId = pathname?.startsWith("/chat/")
+    ? Number(pathname.split("/")[2])
+    : null;
 
-  useEffect(() => {
-    if (!session?.user?.id) return;
-
-    const socket = getSocket();
-    if (!socket.connected) socket.connect();
-
-    const userId = Number(session.user.id);
-    socket.emit("joinUser", { userId });
-
-    const handleRoomSync = (payload: {
+  const handleRoomSync = useCallback(
+    (payload: {
       chatRoomId: number;
       latestMessage?: string | null;
       latestMessageAt?: string | Date | null;
@@ -51,7 +48,9 @@ const Navbar = () => {
                   ? payload.latestMessageSender
                   : room.latestMessageSender,
               unreadCount:
-                payload.unreadCount !== undefined
+                currentChatRoomId === payload.chatRoomId
+                  ? 0
+                  : payload.unreadCount !== undefined
                   ? payload.unreadCount
                   : room.unreadCount,
             };
@@ -71,7 +70,18 @@ const Navbar = () => {
         },
         { revalidate: false },
       );
-    };
+    },
+    [currentChatRoomId, mutate],
+  );
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const socket = getSocket();
+    if (!socket.connected) socket.connect();
+
+    const userId = Number(session.user.id);
+    socket.emit("joinUser", { userId });
 
     socket.on("chat:room:sync", handleRoomSync);
 
@@ -79,7 +89,7 @@ const Navbar = () => {
       socket.emit("leaveUser", { userId });
       socket.off("chat:room:sync", handleRoomSync);
     };
-  }, [session?.user?.id, mutate]);
+  }, [session?.user?.id, handleRoomSync]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 w-full flex items-center text-white bg-[#0D0D0D] border-b-2 border-[#52525B]">
