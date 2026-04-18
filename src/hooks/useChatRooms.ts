@@ -13,7 +13,7 @@ export function useChatRooms() {
     "/api/chat/fetch-rooms",
     fetcher,
     {
-      refreshInterval: 10000, // Poll every 10 seconds for new messages
+      refreshInterval: 0, // Socket-driven realtime; no periodic polling
       revalidateOnFocus: true,
     }
   );

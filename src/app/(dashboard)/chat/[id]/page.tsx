@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
@@ -7,7 +7,10 @@ import { useChatRoom } from "@/hooks/useChatRoom";
 import { useChatMessages } from "@/hooks/useChatMessages";
 import { useSendMessage } from "@/hooks/useSendMessage";
 import { useMarkAsRead } from "@/hooks/useMarkAsRead";
-import { useEditMessage, useDeleteMessage } from "@/hooks/useChatMessageActions";
+import {
+  useEditMessage,
+  useDeleteMessage,
+} from "@/hooks/useChatMessageActions";
 import ChatHeader from "@/components/chat/ChatHeader";
 import MessageList from "@/components/chat/MessageList";
 import MessageInput from "@/components/chat/MessageInput";
@@ -15,7 +18,17 @@ import ForwardMessageModal from "@/components/chat/ForwardMessageModal";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ChatMessage } from "@/types/chat";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { getSocket } from "@/socket";
 
 export default function ChatRoomPage() {
   const { data: session } = useSession();
@@ -23,7 +36,11 @@ export default function ChatRoomPage() {
   const router = useRouter();
   const chatRoomId = params?.id ? Number(params.id) : null;
 
-  const { chatRoom, isLoading: isLoadingRoom, mutate: mutateRoom } = useChatRoom(chatRoomId);
+  const {
+    chatRoom,
+    isLoading: isLoadingRoom,
+    mutate: mutateRoom,
+  } = useChatRoom(chatRoomId);
   const {
     messages,
     unreadInfo,
@@ -41,9 +58,12 @@ export default function ChatRoomPage() {
 
   const [hasMarkedAsRead, setHasMarkedAsRead] = useState(false);
   const [forwardModalOpen, setForwardModalOpen] = useState(false);
-  const [messageToForward, setMessageToForward] = useState<ChatMessage | null>(null);
+  const [messageToForward, setMessageToForward] = useState<ChatMessage | null>(
+    null,
+  );
   const [showChatActionDialog, setShowChatActionDialog] = useState(false);
   const [isChatActionLoading, setIsChatActionLoading] = useState(false);
+  const seenMessageIdsRef = useRef<Set<number>>(new Set());
 
   const currentUserId = session?.user?.id ? Number(session.user.id) : 0;
 
@@ -55,7 +75,52 @@ export default function ChatRoomPage() {
     }
   }, [chatRoomId, hasMarkedAsRead, isLoadingMessages, markAsRead]);
 
-  const handleSendMessage = async (content: string, type: "TEXT" | "LINK" | "IMAGE" | "FILE", file?: File) => {
+  useEffect(() => {
+    for (const msg of messages) {
+      seenMessageIdsRef.current.add(msg.id);
+    }
+  }, [messages]);
+
+  // socket io event fire and listen
+  useEffect(() => {
+    if (!chatRoomId || !session?.user?.id) return;
+
+    const socket = getSocket();
+    if (!socket.connected) socket.connect();
+
+    const myUserId = Number(session.user.id);
+
+    socket.emit("joinRoom", { chatRoomId });
+
+    const handleNewMessage = (incoming: ChatMessage) => {
+      if (!incoming) return;
+      if (incoming.chatRoomId !== chatRoomId) return;
+
+      if (incoming.senderId === myUserId) return;
+
+      if (seenMessageIdsRef.current.has(incoming.id)) return;
+
+      seenMessageIdsRef.current.add(incoming.id);
+
+      addOptimisticMessage({
+        ...incoming,
+        sending: false,
+      });
+    };
+
+    socket.on("chat:message:new", handleNewMessage);
+
+    return () => {
+      socket.emit("leaveRoom", { chatRoomId });
+      socket.off("chat:message:new", handleNewMessage);
+    };
+  }, [chatRoomId, session?.user?.id, addOptimisticMessage]);
+
+  const handleSendMessage = async (
+    content: string,
+    type: "TEXT" | "LINK" | "IMAGE" | "FILE",
+    file?: File,
+  ) => {
     if (!chatRoomId || !session?.user?.id) return;
 
     try {
@@ -67,12 +132,12 @@ export default function ChatRoomPage() {
       if (file && (type === "IMAGE" || type === "FILE")) {
         const reader = new FileReader();
         reader.readAsDataURL(file);
-        
+
         await new Promise<void>((resolve, reject) => {
           reader.onloadend = () => {
             const base64 = reader.result as string;
             const base64Data = base64.split(",")[1]; // Remove data:image/jpeg;base64, prefix
-            
+
             messageData.file = {
               buffer: base64Data,
               type: file.type,
@@ -178,7 +243,10 @@ export default function ChatRoomPage() {
         messageType: messageToForward.messageType,
       };
 
-      if (messageToForward.messageType === "IMAGE" || messageToForward.messageType === "FILE") {
+      if (
+        messageToForward.messageType === "IMAGE" ||
+        messageToForward.messageType === "FILE"
+      ) {
         const mediaResponse = await fetch(messageToForward.message);
         if (!mediaResponse.ok) {
           throw new Error("Failed to load media for forwarding");
@@ -194,7 +262,11 @@ export default function ChatRoomPage() {
 
         payload.file = {
           buffer: base64.split(",")[1],
-          type: blob.type || (messageToForward.messageType === "IMAGE" ? "image/png" : "application/octet-stream"),
+          type:
+            blob.type ||
+            (messageToForward.messageType === "IMAGE"
+              ? "image/png"
+              : "application/octet-stream"),
         };
       } else {
         payload.content = messageToForward.message;
@@ -205,7 +277,11 @@ export default function ChatRoomPage() {
       setForwardModalOpen(false);
       setMessageToForward(null);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || error.message || "Failed to forward message");
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to forward message",
+      );
     }
   };
 
@@ -296,10 +372,7 @@ export default function ChatRoomPage() {
       </div>
 
       <div className="flex-shrink-0 border-t border-zinc-800 bg-[#18181b]">
-        <MessageInput
-          onSendMessage={handleSendMessage}
-          isSending={isSending}
-        />
+        <MessageInput onSendMessage={handleSendMessage} isSending={isSending} />
       </div>
 
       {messageToForward && (
@@ -315,11 +388,16 @@ export default function ChatRoomPage() {
         />
       )}
 
-      <AlertDialog open={showChatActionDialog} onOpenChange={setShowChatActionDialog}>
+      <AlertDialog
+        open={showChatActionDialog}
+        onOpenChange={setShowChatActionDialog}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {chatRoom?.isGroup && chatRoom.isAdmin ? "Delete group?" : "Leave chat?"}
+              {chatRoom?.isGroup && chatRoom.isAdmin
+                ? "Delete group?"
+                : "Leave chat?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {chatRoom?.isGroup && chatRoom.isAdmin
@@ -328,8 +406,13 @@ export default function ChatRoomPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isChatActionLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleLeaveOrDeleteChat} disabled={isChatActionLoading}>
+            <AlertDialogCancel disabled={isChatActionLoading}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLeaveOrDeleteChat}
+              disabled={isChatActionLoading}
+            >
               {isChatActionLoading ? "Working..." : leaveOrDeleteLabel}
             </AlertDialogAction>
           </AlertDialogFooter>

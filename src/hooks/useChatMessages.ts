@@ -22,7 +22,7 @@ export function useChatMessages(chatRoomId: number | null) {
     chatRoomId ? `/api/chat/messages/fetch/${chatRoomId}?limit=30` : null,
     fetcher,
     {
-      refreshInterval: 5000, // Poll every 5 seconds when viewing chat
+      refreshInterval: 0, // Socket-driven realtime; no periodic polling
       revalidateOnFocus: true,
       onSuccess: (data) => {
         if (data.messages) {

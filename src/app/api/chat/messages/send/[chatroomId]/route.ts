@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
 import { uploadToCloudinary } from "@/utils/uploadToCloudinary"; 
-import { sendMessageSchema } from "@/validations/chatSchema/sendMessageSchema"; 
+import { sendMessageSchema } from "@/validations/chatSchema/sendMessageSchema";
+
+export const runtime = "nodejs"; 
 
 export async function POST(
   req: Request,
@@ -101,12 +103,26 @@ export async function POST(
         messageType,
         cloudinaryPublicId: publicId,
       },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            image: true
+          }
+        }
+      }
     });
 
     await prisma.chatRoom.update({
       where: { id: chatroomIdNumber },
       data: { lastMessageAt: new Date() },
     });
+
+    const io = (globalThis as any).__io;
+    if(io){
+      io.to("chat:" + chatroomIdNumber).emit("chat:message:new",newMessage);
+    }
 
     return NextResponse.json(
       { success: true, message: "Message sent", data: newMessage },
