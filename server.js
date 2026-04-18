@@ -32,6 +32,18 @@ app.prepare().then(() => {
       if(!chatRoomId)return;
       socket.leave("chat:" + chatRoomId);
     })
+
+    socket.on("joinUser",({userId}) => {
+      if(!userId)return;
+      socket.join("user:" + userId);
+    })
+
+    socket.on("leaveUser",({userId}) => {
+      if(!userId)return;
+      socket.leave("user:" + userId);
+    })
+
+
   });
 
   httpServer

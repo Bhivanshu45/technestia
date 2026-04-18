@@ -1,15 +1,85 @@
-'use client'
+"use client";
 import Link from "next/link";
+import { useEffect } from "react";
 import SearchBar from "../common/SearchBar";
 import { Button } from "../ui/button";
 import { Bell, MessageCircle } from "lucide-react";
 import { useSession } from "next-auth/react";
 import UserMenu from "./UserMenu";
 import { useChatRooms } from "@/hooks/useChatRooms";
+import { getSocket } from "@/socket";
 
 const Navbar = () => {
   const { data: session } = useSession();
-  const { totalUnreadCount } = useChatRooms();
+  const { totalUnreadCount, mutate } = useChatRooms();
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const socket = getSocket();
+    if (!socket.connected) socket.connect();
+
+    const userId = Number(session.user.id);
+    socket.emit("joinUser", { userId });
+
+    const handleRoomSync = (payload: {
+      chatRoomId: number;
+      latestMessage?: string | null;
+      latestMessageAt?: string | Date | null;
+      latestMessageSender?: string | null;
+      unreadCount?: number;
+    }) => {
+      mutate(
+        (prev: any) => {
+          if (!prev?.chatRooms) return prev;
+
+          const updated = prev.chatRooms.map((room: any) => {
+            if (room.id !== payload.chatRoomId) return room;
+
+            return {
+              ...room,
+              latestMessage:
+                payload.latestMessage !== undefined
+                  ? payload.latestMessage
+                  : room.latestMessage,
+              latestMessageAt:
+                payload.latestMessageAt !== undefined
+                  ? payload.latestMessageAt
+                  : room.latestMessageAt,
+              latestMessageSender:
+                payload.latestMessageSender !== undefined
+                  ? payload.latestMessageSender
+                  : room.latestMessageSender,
+              unreadCount:
+                payload.unreadCount !== undefined
+                  ? payload.unreadCount
+                  : room.unreadCount,
+            };
+          });
+
+          updated.sort((a: any, b: any) => {
+            const ta = a.latestMessageAt
+              ? new Date(a.latestMessageAt).getTime()
+              : 0;
+            const tb = b.latestMessageAt
+              ? new Date(b.latestMessageAt).getTime()
+              : 0;
+            return tb - ta;
+          });
+
+          return { ...prev, chatRooms: updated };
+        },
+        { revalidate: false },
+      );
+    };
+
+    socket.on("chat:room:sync", handleRoomSync);
+
+    return () => {
+      socket.emit("leaveUser", { userId });
+      socket.off("chat:room:sync", handleRoomSync);
+    };
+  }, [session?.user?.id, mutate]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 w-full flex items-center text-white bg-[#0D0D0D] border-b-2 border-[#52525B]">
@@ -40,7 +110,7 @@ const Navbar = () => {
                   <MessageCircle className="h-6 w-6" />
                   {totalUnreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full w-5 h-5 text-[10px] font-semibold flex items-center justify-center">
-                      {totalUnreadCount > 9 ? '9+' : totalUnreadCount}
+                      {totalUnreadCount > 9 ? "9+" : totalUnreadCount}
                     </span>
                   )}
                 </Button>
@@ -84,6 +154,6 @@ const Navbar = () => {
       </div>
     </nav>
   );
-}
+};
 
-export default Navbar
+export default Navbar;

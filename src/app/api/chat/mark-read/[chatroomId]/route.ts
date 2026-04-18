@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function PATCH(
   _req: Request,
-  context: { params: { chatroomId: string } }
+  context: { params: { chatroomId: string } },
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
@@ -13,7 +13,7 @@ export async function PATCH(
   }
 
   const userId = Number(session.user.id);
-  const {chatroomId }= await context.params;
+  const { chatroomId } = await context.params;
   const chatroomIdNumber = Number(chatroomId);
 
   if (!chatroomIdNumber || isNaN(chatroomIdNumber)) {
@@ -35,7 +35,7 @@ export async function PATCH(
           success: false,
           message: "You are not a participant in this chatroom",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -51,12 +51,23 @@ export async function PATCH(
       },
     });
 
-    return NextResponse.json({ success: true ,message: "Marked as read"}, { status: 200 });
+    const io = (globalThis as any).__io;
+    if (io) {
+      io.to("user:" + userId).emit("chat:room:sync", {
+        chatRoomId: chatroomIdNumber,
+        unreadCount: 0,
+      });
+    }
+
+    return NextResponse.json(
+      { success: true, message: "Marked as read" },
+      { status: 200 },
+    );
   } catch (error) {
     console.error("[MARK_READ_ERROR]", error);
     return NextResponse.json(
       { error: "Something went wrong" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

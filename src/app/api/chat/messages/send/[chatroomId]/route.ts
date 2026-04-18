@@ -2,20 +2,21 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
-import { uploadToCloudinary } from "@/utils/uploadToCloudinary"; 
+import { uploadToCloudinary } from "@/utils/uploadToCloudinary";
 import { sendMessageSchema } from "@/validations/chatSchema/sendMessageSchema";
+import { getUnreadMessageCount } from "@/utils/getUnreadMessagesCount";
 
-export const runtime = "nodejs"; 
+export const runtime = "nodejs";
 
 export async function POST(
   req: Request,
-  context: { params: { chatroomId: string } }
+  context: { params: { chatroomId: string } },
 ) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user || !session.user.id) {
     return NextResponse.json(
       { success: false, message: "Unauthorized" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
@@ -26,7 +27,7 @@ export async function POST(
   if (!chatroomIdNumber || isNaN(chatroomIdNumber)) {
     return NextResponse.json(
       { success: false, message: "Invalid chat room ID" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -40,11 +41,11 @@ export async function POST(
         message: "Invalid input",
         errors: parsedData.error.flatten().fieldErrors,
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  const { messageType, content,file } = parsedData.data;
+  const { messageType, content, file } = parsedData.data;
 
   try {
     const chatRoom = await prisma.chatRoom.findUnique({
@@ -53,10 +54,10 @@ export async function POST(
     if (!chatRoom) {
       return NextResponse.json(
         { success: false, message: "Chat room not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
-    
+
     const participant = await prisma.chatParticipant.findFirst({
       where: { chatRoomId: chatroomIdNumber, userId, hasLeft: false },
     });
@@ -67,7 +68,7 @@ export async function POST(
           success: false,
           message: "You are not an active participant in this chat room",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -77,13 +78,17 @@ export async function POST(
       if (!content || !content.trim()) {
         return NextResponse.json(
           { success: false, message: "Message content is required" },
-          { status: 400 }
+          { status: 400 },
         );
       }
       messageContent = content.trim();
     } else if ((messageType === "IMAGE" || messageType === "FILE") && file) {
       const buffer = Buffer.from(file.buffer, "base64");
-      const type = file.type.startsWith("video") ? "video" : file.type.startsWith("image") ? "image" : "raw";
+      const type = file.type.startsWith("video")
+        ? "video"
+        : file.type.startsWith("image")
+          ? "image"
+          : "raw";
 
       const uploaded = await uploadToCloudinary(buffer, type);
       messageContent = uploaded.secureUrl;
@@ -91,7 +96,7 @@ export async function POST(
     } else {
       return NextResponse.json(
         { success: false, message: "Invalid file input for media message" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -108,10 +113,10 @@ export async function POST(
           select: {
             id: true,
             name: true,
-            image: true
-          }
-        }
-      }
+            image: true,
+          },
+        },
+      },
     });
 
     await prisma.chatRoom.update({
@@ -120,19 +125,49 @@ export async function POST(
     });
 
     const io = (globalThis as any).__io;
-    if(io){
-      io.to("chat:" + chatroomIdNumber).emit("chat:message:new",newMessage);
+    if (io) {
+      io.to("chat:" + chatroomIdNumber).emit("chat:message:new", newMessage);
+    }
+
+    const activeParticipants = await prisma.chatParticipant.findMany({
+      where: {
+        chatRoomId: chatroomIdNumber,
+        hasLeft: false,
+      },
+      select: {
+        userId: true,
+      },
+    });
+
+    if (io) {
+      for (const p of activeParticipants) {
+        const unreadCount =
+          p.userId === userId
+            ? 0
+            : await getUnreadMessageCount({
+                chatRoomId: chatroomIdNumber,
+                userId: p.userId,
+              });
+
+        io.to("user:" + p.userId).emit("chat:room:sync", {
+          chatRoomId: chatroomIdNumber,
+          latestMessage: newMessage.message,
+          latestMessageAt: newMessage.createdAt,
+          latestMessageSender: newMessage.sender?.name || null,
+          unreadCount,
+        });
+      }
     }
 
     return NextResponse.json(
       { success: true, message: "Message sent", data: newMessage },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("[SEND_MESSAGE_ERROR]", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
