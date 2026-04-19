@@ -1,6 +1,6 @@
 "use client";
 import React, { useRef, useEffect, useState } from "react";
-import { ChatMessage } from "@/types/chat";
+import { ChatMessage, SeenInfo } from "@/types/chat";
 import MessageBubble from "./MessageBubble";
 import DateSeparator from "./DateSeparator";
 import UnreadDivider from "./UnreadDivider";
@@ -19,6 +19,8 @@ interface MessageListProps {
   hasMore: boolean;
   isLoading: boolean;
   onLoadMore: () => void;
+  seenMap?: Map<number, SeenInfo[]>;
+  onGetSeenUsers?: (messageId: number) => SeenInfo[];
   onEditMessage?: (messageId: number, newContent: string) => void;
   onDeleteMessage?: (messageId: number) => void;
   onForwardMessage?: (message: ChatMessage) => void;
@@ -32,6 +34,8 @@ export default function MessageList({
   hasMore,
   isLoading,
   onLoadMore,
+  seenMap,
+  onGetSeenUsers,
   onEditMessage,
   onDeleteMessage,
   onForwardMessage,
@@ -111,6 +115,7 @@ export default function MessageList({
           isOwnMessage={isOwnMessage}
           showAvatar={showAvatar}
           isGroupChat={isGroupChat}
+          seenUsers={onGetSeenUsers?.(message.id)}
           onEdit={onEditMessage}
           onDelete={onDeleteMessage}
           onForward={onForwardMessage}

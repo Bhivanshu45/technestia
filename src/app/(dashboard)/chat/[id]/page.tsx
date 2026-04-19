@@ -7,6 +7,7 @@ import { useChatRoom } from "@/hooks/useChatRoom";
 import { useChatMessages } from "@/hooks/useChatMessages";
 import { useSendMessage } from "@/hooks/useSendMessage";
 import { useMarkAsRead } from "@/hooks/useMarkAsRead";
+import { useChatMessageSeen } from "@/hooks/useChatMessageSeen";
 import {
   useEditMessage,
   useDeleteMessage,
@@ -73,6 +74,7 @@ export default function ChatRoomPage() {
   const presenceTargetUserIds =
     !chatRoom?.isGroup && chatRoom?.otherUser?.id ? [chatRoom.otherUser.id] : [];
   const { isUserOnline } = useChatPresence(chatRoomId, presenceTargetUserIds);
+  const { seenMap, getSeenUsers } = useChatMessageSeen(chatRoomId);
 
   // Mark as read when opening chat
   useEffect(() => {
@@ -144,7 +146,7 @@ export default function ChatRoomPage() {
         { revalidate: false }
       );
 
-      markAsRead(chatRoomId);
+      markAsRead(chatRoomId, incoming.id);
     };
 
     const handleTypingStart = (payload: {
@@ -455,6 +457,7 @@ export default function ChatRoomPage() {
           onRefresh={handleRefresh}
           typingText={typingText}
           presenceText={presenceText}
+          lastSeenAt={!chatRoom?.isGroup ? chatRoom?.otherUser?.lastSeenAt : undefined}
           onOpenSettings={handleOpenChatSettings}
           onRequestLeaveOrDelete={handleRequestLeaveOrDelete}
           leaveOrDeleteLabel={leaveOrDeleteLabel}
@@ -470,6 +473,8 @@ export default function ChatRoomPage() {
           hasMore={hasMore}
           isLoading={isLoadingMessages}
           onLoadMore={loadMore}
+          seenMap={seenMap}
+          onGetSeenUsers={getSeenUsers}
           onEditMessage={handleEditMessage}
           onDeleteMessage={handleDeleteMessage}
           onForwardMessage={handleForwardMessage}

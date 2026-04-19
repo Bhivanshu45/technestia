@@ -22,6 +22,7 @@ export interface ChatRoomDetails {
     id: number;
     name: string | null;
     image: string | null;
+    lastSeenAt?: Date | null;
   };
 }
 
@@ -58,6 +59,13 @@ export interface ChatParticipant {
     image: string | null;
     email: string | null;
   };
+}
+
+export interface SeenInfo {
+  messageId: number;
+  userId: number;
+  seenAt: Date;
+  userName: string | null;
 }
 
 export interface SendMessageData {

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { ChatMessage as ChatMessageType } from "@/types/chat";
+import { ChatMessage as ChatMessageType, SeenInfo } from "@/types/chat";
 import { format, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Download, FileText } from "lucide-react";
@@ -14,6 +14,7 @@ interface MessageBubbleProps {
   isOwnMessage: boolean;
   showAvatar: boolean;
   isGroupChat: boolean;
+  seenUsers?: SeenInfo[];
   onEdit?: (messageId: number, newContent: string) => void;
   onDelete?: (messageId: number) => void;
   onForward?: (message: ChatMessageType) => void;
@@ -24,6 +25,7 @@ export default function MessageBubble({
   isOwnMessage,
   showAvatar,
   isGroupChat,
+  seenUsers,
   onEdit,
   onDelete,
   onForward,
@@ -255,6 +257,15 @@ export default function MessageBubble({
             <span className="text-[10px] text-zinc-500 italic">Edited</span>
           )}
         </div>
+
+        {/* Seen indicator (own messages only) */}
+        {isOwnMessage && seenUsers && seenUsers.length > 0 && (
+          <div className="text-[9px] text-zinc-500 mt-1 px-2">
+            {isGroupChat
+              ? `Seen by ${seenUsers.length} ${seenUsers.length === 1 ? "person" : "people"}`
+              : `Seen ${format(seenUsers[0]?.seenAt, "h:mm a")}`}
+          </div>
+        )}
       </div>
     </div>
   );

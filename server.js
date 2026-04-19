@@ -169,6 +169,17 @@ app.prepare().then(() => {
       });
     })
 
+    socket.on("chat:message:seen", ({ chatRoomId, userId, messageId, seenAt, userName }) => {
+      if (!chatRoomId || !userId || !messageId || !seenAt) return;
+      io.to("chat:" + chatRoomId).emit("chat:message:seen", {
+        chatRoomId,
+        userId,
+        messageId,
+        seenAt,
+        userName: userName || null,
+      });
+    });
+
     socket.on("disconnect", () => {
       const disconnectedUserId = Number(socket.data.userId);
       if (!Number.isFinite(disconnectedUserId) || disconnectedUserId <= 0) return;

@@ -24,6 +24,7 @@ interface ChatHeaderProps {
   onRefresh: () => void;
   typingText?: string | null;
   presenceText?: string | null;
+  lastSeenAt?: Date | null;
   onOpenSettings?: () => void;
   onRequestLeaveOrDelete?: () => void;
   leaveOrDeleteLabel?: string;
@@ -35,6 +36,7 @@ export default function ChatHeader({
   onRefresh,
   typingText,
   presenceText,
+  lastSeenAt,
   onOpenSettings,
   onRequestLeaveOrDelete,
   leaveOrDeleteLabel,
@@ -60,6 +62,42 @@ export default function ChatHeader({
     ];
     return colors[id % colors.length];
   };
+
+  const formatLastSeenTime = (date: Date | null | undefined): string | null => {
+    if (!date) return null;
+    const now = new Date();
+    const diff = now.getTime() - new Date(date).getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return null;
+  };
+
+  const statusText = (() => {
+    // Priority: typing > presence > last seen (DM only) > participant count
+    if (typingText) return typingText;
+    
+    if (presenceText) {
+      const lastSeenTime = !chatRoom?.isGroup && lastSeenAt ? formatLastSeenTime(lastSeenAt) : null;
+      return lastSeenTime ? `${presenceText} • Seen ${lastSeenTime}` : presenceText;
+    }
+
+    if (!chatRoom?.isGroup && lastSeenAt) {
+      const lastSeenTime = formatLastSeenTime(lastSeenAt);
+      return lastSeenTime ? `Seen ${lastSeenTime}` : null;
+    }
+
+    if (chatRoom?.isGroup && chatRoom.totalParticipants) {
+      return `${chatRoom.totalParticipants} participant${chatRoom.totalParticipants !== 1 ? "s" : ""}`;
+    }
+
+    return null;
+  })();
 
   const displayName = chatRoom?.isGroup
     ? chatRoom.name
@@ -109,14 +147,12 @@ export default function ChatHeader({
                 <h2 className="text-base font-semibold text-zinc-100">
                   {displayName}
                 </h2>
-                {typingText ? (
-                  <p className="text-xs text-blue-400">{typingText}</p>
-                ) : presenceText ? (
-                  <p className="text-xs text-zinc-400">{presenceText}</p>
-                ) : chatRoom?.isGroup && chatRoom.totalParticipants ? (
-                  <p className="text-xs text-zinc-500">
-                    {chatRoom.totalParticipants} participant
-                    {chatRoom.totalParticipants !== 1 ? "s" : ""}
+                {statusText ? (
+                  <p className={cn(
+                    "text-xs",
+                    typingText ? "text-blue-400" : "text-zinc-400"
+                  )}>
+                    {statusText}
                   </p>
                 ) : null}
               </>
