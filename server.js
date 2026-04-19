@@ -44,6 +44,23 @@ app.prepare().then(() => {
       socket.leave("user:" + userId);
     })
 
+    socket.on("chat:typing:start",({ chatRoomId, userId, userName }) => {
+      if(!chatRoomId || !userId) return;
+      socket.to("chat:" + chatRoomId).emit("chat:typing:start", {
+        chatRoomId,
+        userId,
+        userName: userName || null,
+      });
+    })
+
+    socket.on("chat:typing:stop",({ chatRoomId, userId }) => {
+      if(!chatRoomId || !userId) return;
+      socket.to("chat:" + chatRoomId).emit("chat:typing:stop", {
+        chatRoomId,
+        userId,
+      });
+    })
+
 
   });
 

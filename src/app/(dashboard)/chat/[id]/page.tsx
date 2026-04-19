@@ -63,6 +63,9 @@ export default function ChatRoomPage() {
   );
   const [showChatActionDialog, setShowChatActionDialog] = useState(false);
   const [isChatActionLoading, setIsChatActionLoading] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<Record<number, string | null>>(
+    {},
+  );
   const seenMessageIdsRef = useRef<Set<number>>(new Set());
 
   const currentUserId = session?.user?.id ? Number(session.user.id) : 0;
@@ -140,13 +143,70 @@ export default function ChatRoomPage() {
       markAsRead(chatRoomId);
     };
 
+    const handleTypingStart = (payload: {
+      chatRoomId: number;
+      userId: number;
+      userName?: string | null;
+    }) => {
+      if (!payload || payload.chatRoomId !== chatRoomId) return;
+      if (payload.userId === myUserId) return;
+      setTypingUsers((prev) => ({
+        ...prev,
+        [payload.userId]: payload.userName ?? null,
+      }));
+    };
+
+    const handleTypingStop = (payload: { chatRoomId: number; userId: number }) => {
+      if (!payload || payload.chatRoomId !== chatRoomId) return;
+      setTypingUsers((prev) => {
+        if (!(payload.userId in prev)) return prev;
+        const next = { ...prev };
+        delete next[payload.userId];
+        return next;
+      });
+    };
+
     socket.on("chat:message:new", handleNewMessage);
+    socket.on("chat:typing:start", handleTypingStart);
+    socket.on("chat:typing:stop", handleTypingStop);
 
     return () => {
       socket.emit("leaveRoom", { chatRoomId });
       socket.off("chat:message:new", handleNewMessage);
+      socket.off("chat:typing:start", handleTypingStart);
+      socket.off("chat:typing:stop", handleTypingStop);
+      setTypingUsers({});
     };
   }, [chatRoomId, session?.user?.id, addOptimisticMessage, markAsRead, mutateMessages]);
+
+  const handleTypingStart = () => {
+    if (!chatRoomId || !session?.user?.id) return;
+    const socket = getSocket();
+    if (!socket.connected) return;
+    socket.emit("chat:typing:start", {
+      chatRoomId,
+      userId: Number(session.user.id),
+      userName: session.user.name || null,
+    });
+  };
+
+  const handleTypingStop = () => {
+    if (!chatRoomId || !session?.user?.id) return;
+    const socket = getSocket();
+    if (!socket.connected) return;
+    socket.emit("chat:typing:stop", {
+      chatRoomId,
+      userId: Number(session.user.id),
+    });
+  };
+
+  const typingEntries = Object.values(typingUsers).filter(Boolean) as string[];
+  const typingText =
+    typingEntries.length === 0
+      ? null
+      : typingEntries.length === 1
+        ? `${typingEntries[0]} is typing...`
+        : `${typingEntries[0]} and ${typingEntries.length - 1} other${typingEntries.length > 2 ? "s" : ""} are typing...`;
 
   const handleSendMessage = async (
     content: string,
@@ -382,6 +442,7 @@ export default function ChatRoomPage() {
           chatRoom={chatRoom}
           isLoading={isLoadingRoom}
           onRefresh={handleRefresh}
+          typingText={typingText}
           onOpenSettings={handleOpenChatSettings}
           onRequestLeaveOrDelete={handleRequestLeaveOrDelete}
           leaveOrDeleteLabel={leaveOrDeleteLabel}
@@ -404,7 +465,12 @@ export default function ChatRoomPage() {
       </div>
 
       <div className="flex-shrink-0 border-t border-zinc-800 bg-[#18181b]">
-        <MessageInput onSendMessage={handleSendMessage} isSending={isSending} />
+        <MessageInput
+          onSendMessage={handleSendMessage}
+          isSending={isSending}
+          onTypingStart={handleTypingStart}
+          onTypingStop={handleTypingStop}
+        />
       </div>
 
       {messageToForward && (

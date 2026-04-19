@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Send, Paperclip, Loader2, X, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,14 +10,35 @@ interface MessageInputProps {
   onSendMessage: (content: string, type: "TEXT" | "LINK" | "IMAGE" | "FILE", file?: File) => void;
   isSending: boolean;
   disabled?: boolean;
+  onTypingStart?: () => void;
+  onTypingStop?: () => void;
 }
 
-export default function MessageInput({ onSendMessage, isSending, disabled }: MessageInputProps) {
+export default function MessageInput({
+  onSendMessage,
+  isSending,
+  disabled,
+  onTypingStart,
+  onTypingStop,
+}: MessageInputProps) {
   const [message, setMessage] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      if (isTyping) {
+        onTypingStop?.();
+      }
+    };
+  }, [isTyping, onTypingStop]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -54,6 +75,15 @@ export default function MessageInput({ onSendMessage, isSending, disabled }: Mes
   const handleSend = async () => {
     if (disabled || isSending) return;
 
+    if (isTyping) {
+      setIsTyping(false);
+      onTypingStop?.();
+    }
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+
     // Send file if selected
     if (selectedFile) {
       onSendMessage("", selectedFile.type.startsWith("image/") ? "IMAGE" : "FILE", selectedFile);
@@ -84,7 +114,32 @@ export default function MessageInput({ onSendMessage, isSending, disabled }: Mes
   };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessage(e.target.value);
+    const nextValue = e.target.value;
+    setMessage(nextValue);
+
+    if (nextValue.trim().length > 0) {
+      if (!isTyping) {
+        setIsTyping(true);
+        onTypingStart?.();
+      }
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      typingTimeoutRef.current = setTimeout(() => {
+        setIsTyping(false);
+        onTypingStop?.();
+        typingTimeoutRef.current = null;
+      }, 1500);
+    } else {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+      if (isTyping) {
+        setIsTyping(false);
+        onTypingStop?.();
+      }
+    }
     
     // Auto-resize textarea
     e.target.style.height = "auto";
