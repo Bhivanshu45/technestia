@@ -11,6 +11,7 @@ import {
 } from "@/hooks/useChatGroupActions";
 import { useAllUsers } from "@/hooks/useAllUsers";
 import { useProjectCollaborators } from "@/hooks/useProjectCollaborators";
+import { useChatPresence } from "@/hooks/useChatPresence";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,8 @@ export default function GroupSettingsPage({ params }: { params: { id: string } }
 
   const isLoading = isLoadingRoom || isLoadingParticipants;
   const error = roomError || participantsError;
+  const participantUserIds = (participants || []).map((participant) => participant.userId);
+  const { isUserOnline } = useChatPresence(chatRoomId, participantUserIds);
 
   // Handle group name update
   const handleUpdateName = async () => {
@@ -304,6 +307,9 @@ export default function GroupSettingsPage({ params }: { params: { id: string } }
                     {participant.user.name && (
                       <p className="text-sm text-zinc-400">{participant.user.name}</p>
                     )}
+                    <p className="text-xs text-zinc-500">
+                      {isUserOnline(participant.userId) ? "Online" : "Offline"}
+                    </p>
                   </div>
                   {participant.isAdmin && (
                     <div title="Admin">

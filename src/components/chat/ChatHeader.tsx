@@ -23,6 +23,7 @@ interface ChatHeaderProps {
   isLoading: boolean;
   onRefresh: () => void;
   typingText?: string | null;
+  presenceText?: string | null;
   onOpenSettings?: () => void;
   onRequestLeaveOrDelete?: () => void;
   leaveOrDeleteLabel?: string;
@@ -33,6 +34,7 @@ export default function ChatHeader({
   isLoading,
   onRefresh,
   typingText,
+  presenceText,
   onOpenSettings,
   onRequestLeaveOrDelete,
   leaveOrDeleteLabel,
@@ -109,6 +111,8 @@ export default function ChatHeader({
                 </h2>
                 {typingText ? (
                   <p className="text-xs text-blue-400">{typingText}</p>
+                ) : presenceText ? (
+                  <p className="text-xs text-zinc-400">{presenceText}</p>
                 ) : chatRoom?.isGroup && chatRoom.totalParticipants ? (
                   <p className="text-xs text-zinc-500">
                     {chatRoom.totalParticipants} participant

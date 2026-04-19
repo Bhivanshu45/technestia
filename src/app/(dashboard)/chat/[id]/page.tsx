@@ -18,6 +18,7 @@ import ForwardMessageModal from "@/components/chat/ForwardMessageModal";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ChatMessage } from "@/types/chat";
+import { useChatPresence } from "@/hooks/useChatPresence";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,6 +70,9 @@ export default function ChatRoomPage() {
   const seenMessageIdsRef = useRef<Set<number>>(new Set());
 
   const currentUserId = session?.user?.id ? Number(session.user.id) : 0;
+  const presenceTargetUserIds =
+    !chatRoom?.isGroup && chatRoom?.otherUser?.id ? [chatRoom.otherUser.id] : [];
+  const { isUserOnline } = useChatPresence(chatRoomId, presenceTargetUserIds);
 
   // Mark as read when opening chat
   useEffect(() => {
@@ -207,6 +211,13 @@ export default function ChatRoomPage() {
       : typingEntries.length === 1
         ? `${typingEntries[0]} is typing...`
         : `${typingEntries[0]} and ${typingEntries.length - 1} other${typingEntries.length > 2 ? "s" : ""} are typing...`;
+
+  const presenceText =
+    !chatRoom?.isGroup && chatRoom?.otherUser?.id
+      ? isUserOnline(chatRoom.otherUser.id)
+        ? "Online"
+        : "Offline"
+      : null;
 
   const handleSendMessage = async (
     content: string,
@@ -443,6 +454,7 @@ export default function ChatRoomPage() {
           isLoading={isLoadingRoom}
           onRefresh={handleRefresh}
           typingText={typingText}
+          presenceText={presenceText}
           onOpenSettings={handleOpenChatSettings}
           onRequestLeaveOrDelete={handleRequestLeaveOrDelete}
           leaveOrDeleteLabel={leaveOrDeleteLabel}

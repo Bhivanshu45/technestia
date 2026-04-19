@@ -22,6 +22,87 @@ app.prepare().then(() => {
 
   globalThis.__io = io;
 
+  const presenceRoomName = (chatRoomId) => `presence:chat:${chatRoomId}`;
+
+  const normalizeUserIds = (userIds) => {
+    if (!Array.isArray(userIds)) return [];
+    const normalized = userIds
+      .map((userId) => Number(userId))
+      .filter((userId) => Number.isFinite(userId) && userId > 0);
+    return Array.from(new Set(normalized));
+  };
+
+  const getPresenceSubscriptions = (socket) => {
+    if (!socket.data.presenceSubscriptions) {
+      socket.data.presenceSubscriptions = {};
+    }
+    return socket.data.presenceSubscriptions;
+  };
+
+  const collectWatchedUserIds = async (chatRoomId) => {
+    const socketsInPresenceRoom = await io.in(presenceRoomName(chatRoomId)).fetchSockets();
+    const watchedUserIds = new Set();
+
+    for (const subscribedSocket of socketsInPresenceRoom) {
+      const subscriptions = subscribedSocket.data.presenceSubscriptions;
+      const roomUserIds = subscriptions?.[chatRoomId];
+      if (!Array.isArray(roomUserIds)) continue;
+      for (const userId of roomUserIds) {
+        watchedUserIds.add(userId);
+      }
+    }
+
+    return Array.from(watchedUserIds);
+  };
+
+  const computeOnlineUserIds = async (userIds) => {
+    const onlineUserIds = [];
+
+    await Promise.all(
+      userIds.map(async (userId) => {
+        const sockets = await io.in("user:" + userId).fetchSockets();
+        if (sockets.length > 0) {
+          onlineUserIds.push(userId);
+        }
+      }),
+    );
+
+    return onlineUserIds;
+  };
+
+  const emitPresenceStateForChatRoom = async (chatRoomId) => {
+    const watchedUserIds = await collectWatchedUserIds(chatRoomId);
+    const onlineUserIds = await computeOnlineUserIds(watchedUserIds);
+
+    io.to(presenceRoomName(chatRoomId)).emit("chat:presence:state", {
+      chatRoomId,
+      onlineUserIds,
+    });
+  };
+
+  const emitPresenceStateForSubscribedRoomsByUser = async (userId) => {
+    const allSockets = await io.fetchSockets();
+    const impactedChatRoomIds = new Set();
+
+    for (const connectedSocket of allSockets) {
+      const subscriptions = connectedSocket.data.presenceSubscriptions;
+      if (!subscriptions) continue;
+
+      for (const [chatRoomId, roomUserIds] of Object.entries(subscriptions)) {
+        if (!Array.isArray(roomUserIds)) continue;
+        if (roomUserIds.includes(userId)) {
+          impactedChatRoomIds.add(Number(chatRoomId));
+        }
+      }
+    }
+
+    await Promise.all(
+      Array.from(impactedChatRoomIds).map((chatRoomId) =>
+        emitPresenceStateForChatRoom(chatRoomId),
+      ),
+    );
+  };
+
   io.on("connection", (socket) => {
     socket.on("joinRoom",({chatRoomId}) => {
       if(!chatRoomId)return;
@@ -35,14 +116,41 @@ app.prepare().then(() => {
 
     socket.on("joinUser",({userId}) => {
       if(!userId)return;
-      socket.data.userId = Number(userId);
-      socket.join("user:" + userId);
+      const normalizedUserId = Number(userId);
+      if (!Number.isFinite(normalizedUserId) || normalizedUserId <= 0) return;
+      socket.data.userId = normalizedUserId;
+      socket.join("user:" + normalizedUserId);
+      emitPresenceStateForSubscribedRoomsByUser(normalizedUserId);
     })
 
     socket.on("leaveUser",({userId}) => {
       if(!userId)return;
-      socket.leave("user:" + userId);
+      const normalizedUserId = Number(userId);
+      if (!Number.isFinite(normalizedUserId) || normalizedUserId <= 0) return;
+      socket.leave("user:" + normalizedUserId);
+      emitPresenceStateForSubscribedRoomsByUser(normalizedUserId);
     })
+
+    socket.on("chat:presence:subscribe", async ({ chatRoomId, userIds }) => {
+      const normalizedChatRoomId = Number(chatRoomId);
+      if (!Number.isFinite(normalizedChatRoomId) || normalizedChatRoomId <= 0) return;
+
+      const normalizedUserIds = normalizeUserIds(userIds);
+      const subscriptions = getPresenceSubscriptions(socket);
+      subscriptions[normalizedChatRoomId] = normalizedUserIds;
+
+      socket.join(presenceRoomName(normalizedChatRoomId));
+      await emitPresenceStateForChatRoom(normalizedChatRoomId);
+    });
+
+    socket.on("chat:presence:unsubscribe", ({ chatRoomId }) => {
+      const normalizedChatRoomId = Number(chatRoomId);
+      if (!Number.isFinite(normalizedChatRoomId) || normalizedChatRoomId <= 0) return;
+
+      const subscriptions = getPresenceSubscriptions(socket);
+      delete subscriptions[normalizedChatRoomId];
+      socket.leave(presenceRoomName(normalizedChatRoomId));
+    });
 
     socket.on("chat:typing:start",({ chatRoomId, userId, userName }) => {
       if(!chatRoomId || !userId) return;
@@ -60,6 +168,12 @@ app.prepare().then(() => {
         userId,
       });
     })
+
+    socket.on("disconnect", () => {
+      const disconnectedUserId = Number(socket.data.userId);
+      if (!Number.isFinite(disconnectedUserId) || disconnectedUserId <= 0) return;
+      emitPresenceStateForSubscribedRoomsByUser(disconnectedUserId);
+    });
 
 
   });
