@@ -92,8 +92,8 @@ export default function JoinProjectPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white mb-1">Join Project</h1>
-        <p className="text-[#A1A1AA] text-sm">Search public projects and request collaboration</p>
+        <h1 className="text-2xl font-bold text-white mb-1">Find Projects</h1>
+        <p className="text-[#A1A1AA] text-sm">Search projects and request to join.</p>
       </div>
 
       <div className="bg-[#232326] border border-zinc-800 rounded-lg p-4 space-y-4">

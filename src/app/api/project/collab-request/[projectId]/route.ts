@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CollaborationStatus } from "@prisma/client";
+import { emitCollabSyncToUsers } from "@/lib/collabRealtime";
 
 export async function POST(_req: Request, context: {params: {projectId : string}}){
     const session = await getServerSession(authOptions);
@@ -86,6 +87,17 @@ export async function POST(_req: Request, context: {params: {projectId : string}
             targetId: createdCollab.id,
             targetType: "Collaboration",
           },
+        });
+
+        emitCollabSyncToUsers([userId, project.userId], {
+          type: "REQUEST_SENT",
+          projectId: projectIdNumber,
+          collaborationId: createdCollab.id,
+          status: "PENDING",
+          actorUserId: userId,
+          targetUserId: userId,
+          invitedBy: null,
+          updatedAt: createdCollab.lastUpdatedAt.toISOString(),
         });
 
         return NextResponse.json(

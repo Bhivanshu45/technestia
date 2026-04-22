@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CollaborationStatus } from "@prisma/client";
+import { emitCollabSyncToUsers } from "@/lib/collabRealtime";
 
 export async function PATCH(
   _req: Request,
@@ -46,7 +47,7 @@ export async function PATCH(
       );
     }
 
-    await prisma.collaboration.update({
+    const updatedCollab = await prisma.collaboration.update({
       where: { id: invite.id },
       data: {
         status: CollaborationStatus.REJECTED,
@@ -63,6 +64,17 @@ export async function PATCH(
         targetId: invite.id,
         targetType: "Collaboration",
       },
+    });
+
+    emitCollabSyncToUsers([userId, Number(invite.invitedBy)], {
+      type: "INVITE_DECLINED",
+      projectId: projectIdNumber,
+      collaborationId: invite.id,
+      status: "REJECTED",
+      actorUserId: userId,
+      targetUserId: userId,
+      invitedBy: invite.invitedBy,
+      updatedAt: updatedCollab.lastUpdatedAt.toISOString(),
     });
 
     return NextResponse.json(

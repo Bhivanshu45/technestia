@@ -201,8 +201,8 @@ export default function CollaborationPendingPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white mb-1">Team Management</h1>
-        <p className="text-[#A1A1AA] text-sm">Select a project to invite or remove collaborators</p>
+        <h1 className="text-2xl font-bold text-white mb-1">Invite & Manage Team</h1>
+        <p className="text-[#A1A1AA] text-sm">Select a project to invite users and manage collaborators.</p>
       </div>
 
       {projects.length > 0 && (

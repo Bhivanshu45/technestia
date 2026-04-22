@@ -44,12 +44,12 @@ const sidebarOptions: Record<string, SidebarOption[]> = {
   ],
   collaborations: [
     { label: "Overview", href: "/collaborations", icon: LayoutDashboard },
-    { label: "Join Project", href: "/collaborations/join", icon: Rocket },
-    { label: "Invites (Incoming)", href: "/collaborations/invitations", icon: Inbox },
-    { label: "Requests (Incoming)", href: "/collaborations/requests", icon: Send },
-    { label: "Team Management", href: "/collaborations/pending", icon: Users },
+    { label: "Find Projects", href: "/collaborations/join", icon: Rocket },
+    { label: "Incoming Invites", href: "/collaborations/invitations", icon: Inbox },
+    { label: "Incoming Requests", href: "/collaborations/requests", icon: Send },
+    { label: "Manage Team", href: "/collaborations/pending", icon: Users },
     { label: "My Requests", href: "/collaborations/my-requests", icon: Bell },
-    { label: "History", href: "/collaborations/history", icon: Clock3 },
+    { label: "My Collaborations", href: "/collaborations/history", icon: Clock3 },
   ],
   activity: [
     { label: "Activity Log", href: "/activity", icon: Activity },

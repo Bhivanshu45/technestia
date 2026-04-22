@@ -113,8 +113,8 @@ export default function CollaborationRequestsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white mb-1">Collaboration Requests</h1>
-        <p className="text-[#A1A1AA] text-sm">Approve or reject incoming requests</p>
+        <h1 className="text-2xl font-bold text-white mb-1">Incoming Join Requests</h1>
+        <p className="text-[#A1A1AA] text-sm">Review requests to join your projects.</p>
       </div>
 
       {projects.length === 0 ? (

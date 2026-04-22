@@ -45,14 +45,14 @@ export default function CollaborationHistoryPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white mb-1">Collaboration History</h1>
-        <p className="text-[#A1A1AA] text-sm">Projects you are currently collaborating on</p>
+        <h1 className="text-2xl font-bold text-white mb-1">My Collaborations</h1>
+        <p className="text-[#A1A1AA] text-sm">Projects where you are an active collaborator.</p>
       </div>
 
       {projects.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="No collaboration history"
+          title="No collaborations"
           description="You are not collaborating on any project yet."
         />
       ) : (

@@ -80,13 +80,9 @@ const Navbar = () => {
     const socket = getSocket();
     if (!socket.connected) socket.connect();
 
-    const userId = Number(session.user.id);
-    socket.emit("joinUser", { userId });
-
     socket.on("chat:room:sync", handleRoomSync);
 
     return () => {
-      socket.emit("leaveUser", { userId });
       socket.off("chat:room:sync", handleRoomSync);
     };
   }, [session?.user?.id, handleRoomSync]);

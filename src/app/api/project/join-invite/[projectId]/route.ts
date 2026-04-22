@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CollaborationStatus } from "@prisma/client";
+import { emitCollabSyncToUsers } from "@/lib/collabRealtime";
 
 export async function PATCH(
   _req: Request,
@@ -65,6 +66,17 @@ export async function PATCH(
         targetId: updatedCollab.id,
         targetType: "Collaboration",
       },
+    });
+
+    emitCollabSyncToUsers([userId, Number(invite.invitedBy)], {
+      type: "INVITE_ACCEPTED",
+      projectId: projectIdNumber,
+      collaborationId: updatedCollab.id,
+      status: "ACCEPTED",
+      actorUserId: userId,
+      targetUserId: userId,
+      invitedBy: invite.invitedBy,
+      updatedAt: updatedCollab.lastUpdatedAt.toISOString(),
     });
 
     return NextResponse.json(

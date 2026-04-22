@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AccessLevel, CollaborationStatus } from "@prisma/client";
+import { emitCollabSyncToUsers } from "@/lib/collabRealtime";
 
 export async function POST(req: Request, context: { params: { projectId: string } }) {
     const session = await getServerSession(authOptions);
@@ -128,6 +129,17 @@ export async function POST(req: Request, context: { params: { projectId: string 
             targetId: createInvite.id,
             targetType: "Collaboration",
           },
+        });
+
+        emitCollabSyncToUsers([userId, targetUserId], {
+          type: "INVITE_SENT",
+          projectId: projectIdNumber,
+          collaborationId: createInvite.id,
+          status: "PENDING",
+          actorUserId: userId,
+          targetUserId,
+          invitedBy: userId,
+          updatedAt: createInvite.lastUpdatedAt.toISOString(),
         });
     
         return NextResponse.json(

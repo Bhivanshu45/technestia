@@ -153,7 +153,7 @@ export default function CollaborationInvitationsPage() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white mb-1">Invitations</h1>
-        <p className="text-[#A1A1AA] text-sm">Manage incoming invites and track sent invites</p>
+        <p className="text-[#A1A1AA] text-sm">Manage incoming invites and track sent invites.</p>
       </div>
 
       <div className="space-y-4">

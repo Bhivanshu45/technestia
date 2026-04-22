@@ -31,7 +31,7 @@ export default function MyRequestsPage() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white mb-1">My Requests</h1>
-        <p className="text-[#A1A1AA] text-sm">Track projects you requested to join</p>
+        <p className="text-[#A1A1AA] text-sm">Track requests you sent to join other projects.</p>
       </div>
 
       {requests.length === 0 ? (

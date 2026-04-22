@@ -87,7 +87,7 @@ export default function CollaborationsOverviewPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Collaborations</h1>
-          <p className="text-[#A1A1AA] text-sm">Manage your teams and collaboration projects</p>
+          <p className="text-[#A1A1AA] text-sm">Manage invites, requests, team actions, and active collaborations.</p>
         </div>
         <Link href="/collaborations/join">
           <Button className="bg-blue-700 hover:bg-blue-800 text-white">Join Project</Button>
