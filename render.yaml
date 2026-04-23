@@ -3,7 +3,7 @@ services:
     name: technestia
     env: node
     plan: starter
-    buildCommand: npm run build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     preDeployCommand: npx prisma migrate deploy
     autoDeploy: true
