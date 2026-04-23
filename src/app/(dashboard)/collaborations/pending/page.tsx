@@ -165,6 +165,7 @@ function ProjectTeamManager({ project, currentUserId, users }: any) {
               <Button
                 size="sm"
                 variant="outline"
+                className="border-red-800 bg-red-900/20 text-red-300 hover:bg-red-900/40"
                 onClick={() => handleRemove(collab.user?.id)}
                 disabled={removingId === collab.user?.id}
               >

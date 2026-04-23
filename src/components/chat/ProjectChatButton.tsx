@@ -56,7 +56,10 @@ export default function ProjectChatButton({
       variant={variant}
       onClick={handleOpenProjectChat}
       disabled={isCreating}
-      className={cn("relative", className)}
+      className={cn(
+        "relative border-zinc-700 bg-[#1f1f23] text-white hover:bg-[#2a2a2f]",
+        className,
+      )}
     >
       {isCreating ? (
         <>

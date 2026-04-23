@@ -135,7 +135,12 @@ export default function JoinProjectPage() {
                         <Button size="sm">Accept Invite</Button>
                       </Link>
                     ) : requestMap.has(project.id) ? (
-                      <Button size="sm" variant="outline" disabled>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-zinc-700 bg-[#1f1f23] text-zinc-200"
+                        disabled
+                      >
                         {requestMap.get(project.id) === "PENDING"
                           ? "Request Pending"
                           : requestMap.get(project.id) === "ACCEPTED"

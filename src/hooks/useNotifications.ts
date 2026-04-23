@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import axiosInstance from "@/lib/axios";
@@ -19,27 +19,35 @@ export function useNotifications() {
     { refreshInterval: 0 },
   );
 
-  const [liveNotifications, setLiveNotifications] = useState<NotificationItem[]>([]);
-
-  useEffect(() => {
-    setLiveNotifications(data?.notifications || []);
-  }, [data?.notifications]);
-
   useEffect(() => {
     const socket = getSocket();
     if (!socket.connected) socket.connect();
 
     const handleNewNotification = (payload: NotificationItem) => {
       if (!payload?.id) return;
-      setLiveNotifications((prev) => {
-        if (prev.some((item) => item.id === payload.id)) return prev;
-        const next = [payload, ...prev];
-        next.sort(
+      mutate((prev) => {
+        if (!prev) {
+          return {
+            success: true,
+            message: "Notifications updated",
+            notifications: [payload],
+            unreadCount: payload.isRead ? 0 : 1,
+          };
+        }
+
+        if (prev.notifications.some((item) => item.id === payload.id)) return prev;
+
+        const notifications = [payload, ...prev.notifications].sort(
           (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
-        return next;
-      });
+
+        return {
+          ...prev,
+          notifications,
+          unreadCount: notifications.filter((item) => !item.isRead).length,
+        };
+      }, { revalidate: false });
     };
 
     const handleReadSync = (payload: {
@@ -47,25 +55,40 @@ export function useNotifications() {
       isRead: boolean;
       all?: boolean;
     }) => {
+      if (!payload) return;
+
+      mutate((prev) => {
+        if (!prev) return prev;
+
+        let notifications = prev.notifications;
+
+        if (payload.all) {
+          notifications = notifications.map((item) => ({
+            ...item,
+            isRead: payload.isRead,
+          }));
+        } else if (payload.notificationId) {
+          notifications = notifications.map((item) =>
+            item.id === payload.notificationId
+              ? { ...item, isRead: payload.isRead }
+              : item,
+          );
+        }
+
+        return {
+          ...prev,
+          notifications,
+          unreadCount: notifications.filter((item) => !item.isRead).length,
+        };
+      }, { revalidate: false });
+
       if (payload?.all) {
-        setLiveNotifications((prev) =>
-          prev.map((item) => ({ ...item, isRead: payload.isRead })),
-        );
         return;
       }
-
-      if (!payload?.notificationId) return;
-      setLiveNotifications((prev) =>
-        prev.map((item) =>
-          item.id === payload.notificationId
-            ? { ...item, isRead: payload.isRead }
-            : item,
-        ),
-      );
     };
 
     const handleReadAllSync = () => {
-      setLiveNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
+      handleReadSync({ all: true, isRead: true });
     };
 
     socket.on("notification:new", handleNewNotification);
@@ -79,44 +102,71 @@ export function useNotifications() {
     };
   }, []);
 
+  const notifications = useMemo(() => data?.notifications || [], [data?.notifications]);
+
   const unreadCount = useMemo(
-    () => liveNotifications.filter((item) => !item.isRead).length,
-    [liveNotifications],
+    () => notifications.filter((item) => !item.isRead).length,
+    [notifications],
   );
 
   const markAsRead = useCallback(
     async (notificationId: number) => {
-      const prevNotifications = liveNotifications;
-      setLiveNotifications((prev) =>
-        prev.map((item) =>
+      let previousState: NotificationsResponse | undefined;
+
+      mutate((prev) => {
+        previousState = prev;
+        if (!prev) return prev;
+
+        const notifications = prev.notifications.map((item) =>
           item.id === notificationId ? { ...item, isRead: true } : item,
-        ),
-      );
+        );
+
+        return {
+          ...prev,
+          notifications,
+          unreadCount: notifications.filter((item) => !item.isRead).length,
+        };
+      }, { revalidate: false });
 
       try {
         await axiosInstance.patch(`/api/notifications/read/${notificationId}`);
       } catch (error) {
-        setLiveNotifications(prevNotifications);
+        mutate(previousState, { revalidate: false });
         throw error;
       }
     },
-    [liveNotifications],
+    [mutate],
   );
 
   const markAllAsRead = useCallback(async () => {
-    const prevNotifications = liveNotifications;
-    setLiveNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
+    let previousState: NotificationsResponse | undefined;
+
+    mutate((prev) => {
+      previousState = prev;
+      if (!prev) return prev;
+
+      const notifications = prev.notifications.map((item) => ({
+        ...item,
+        isRead: true,
+      }));
+
+      return {
+        ...prev,
+        notifications,
+        unreadCount: 0,
+      };
+    }, { revalidate: false });
 
     try {
       await axiosInstance.patch("/api/notifications/read-all");
     } catch (error) {
-      setLiveNotifications(prevNotifications);
+      mutate(previousState, { revalidate: false });
       throw error;
     }
-  }, [liveNotifications]);
+  }, [mutate]);
 
   return {
-    notifications: liveNotifications,
+    notifications,
     unreadCount,
     isLoading,
     isError: error,

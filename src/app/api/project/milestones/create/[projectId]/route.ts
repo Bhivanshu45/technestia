@@ -89,7 +89,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
             }, { status: 403 });
         }
         const isFullAccessCollab = collaborator?.accessLevel === AccessLevel.FULL;
-        if(!isFullAccessCollab) {
+        if(!isOwner && !isFullAccessCollab) {
             return NextResponse.json({
                 success: false,
                 message: "You do not have permission to create milestones for this project."

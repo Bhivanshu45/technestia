@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -21,6 +21,21 @@ export default function NotificationsPage() {
     markAsRead,
     markAllAsRead,
   } = useNotifications();
+
+  const isAutoMarkingRef = useRef(false);
+
+  useEffect(() => {
+    if (isLoading || unreadCount === 0 || isAutoMarkingRef.current) return;
+
+    isAutoMarkingRef.current = true;
+    markAllAsRead()
+      .catch(() => {
+        // Ignore automatic mark-as-read failure to avoid interrupting page usage.
+      })
+      .finally(() => {
+        isAutoMarkingRef.current = false;
+      });
+  }, [isLoading, unreadCount, markAllAsRead]);
 
   const latestNotification = notifications[0];
 
