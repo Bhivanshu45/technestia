@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AccessLevel, CollaborationStatus } from "@prisma/client";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 export async function DELETE(_req: Request, context: { params: { milestoneId: string } }) {
     const session = await getServerSession(authOptions);
@@ -66,16 +67,14 @@ export async function DELETE(_req: Request, context: { params: { milestoneId: st
             where: { id: milestoneIdNumber }
         });
 
-        await prisma.activityLog.create({
-          data: {
-            userId,
-            projectId: milestone.projectId,
-            actionType: "DELETE_MILESTONE",
-            description: `Milestone "${milestone.title}" deleted by ${session.user.email || "a user"}.`,
-            targetId: milestone.projectId,
-            targetType: "MILESTONE",
-          },
-        });
+                await createActivityAndNotify({
+                    userId,
+                    projectId: milestone.projectId,
+                    actionType: "DELETE_MILESTONE",
+                    description: `Milestone "${milestone.title}" deleted by ${session.user.email || "a user"}.`,
+                    targetId: milestone.projectId,
+                    targetType: "MILESTONE",
+                });
 
         return NextResponse.json({
             success: true,

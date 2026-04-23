@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { AccessLevel, CollaborationStatus } from "@prisma/client";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 const linksSchema = z.object({
   githubUrl: z.string().url().nullable().or(z.literal("")),
@@ -87,6 +88,15 @@ export async function PATCH(req: Request, context: { params: { projectId: string
         githubUrl: githubUrl || null,
         liveDemoUrl: liveDemoUrl || null,
       },
+    });
+
+    await createActivityAndNotify({
+      userId,
+      projectId: projectIdNumber,
+      actionType: "UPDATE_PROJECT",
+      description: "Updated project links",
+      targetId: projectIdNumber,
+      targetType: "Project",
     });
 
     return NextResponse.json(

@@ -15,11 +15,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Trash2, AlertCircle } from "lucide-react";
+import { Trash2, AlertCircle, Pencil } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 
 type ProjectStatus = "IDEA" | "IN_PROGRESS" | "COMPLETED";
+
+const OUTLINE_DARK_BUTTON = "border-zinc-700 bg-[#18181b] text-white hover:bg-zinc-800";
 
 export default function ProjectSettingsTab({ project, onUpdate, isOwner = false }: any) {
   const router = useRouter();
@@ -44,6 +46,9 @@ export default function ProjectSettingsTab({ project, onUpdate, isOwner = false 
   });
 
   const [selectedScreenshots, setSelectedScreenshots] = useState<File[]>([]);
+  const [editingSection, setEditingSection] = useState<
+    "general" | "links" | "screenshots" | "project" | null
+  >(null);
 
   const handleInputChange = (e: any) => {
     const { name, value } = e.target;
@@ -71,6 +76,7 @@ export default function ProjectSettingsTab({ project, onUpdate, isOwner = false 
         tags: parseCsv(generalData.tagsText),
       });
       toast.success("General details updated");
+      setEditingSection(null);
       onUpdate();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to update project details");
@@ -87,6 +93,7 @@ export default function ProjectSettingsTab({ project, onUpdate, isOwner = false 
         liveDemoUrl: socialData.liveDemoUrl || "",
       });
       toast.success("Social links updated");
+      setEditingSection(null);
       onUpdate();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to update social links");
@@ -103,6 +110,7 @@ export default function ProjectSettingsTab({ project, onUpdate, isOwner = false 
         isPublic: projectSettingsData.isPublic,
       });
       toast.success("Project settings updated");
+      setEditingSection(null);
       onUpdate();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to update project settings");
@@ -145,6 +153,7 @@ export default function ProjectSettingsTab({ project, onUpdate, isOwner = false 
 
       toast.success("Screenshots updated");
       setSelectedScreenshots([]);
+      setEditingSection(null);
       onUpdate();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to update screenshots");
@@ -168,12 +177,24 @@ export default function ProjectSettingsTab({ project, onUpdate, isOwner = false 
 
   return (
     <div className="space-y-6">
-      <div className="bg-[#232326] border border-zinc-800 rounded-lg p-6">
-        <div className="mb-4">
+      <div className="bg-[#232326] border border-zinc-800 rounded-lg p-6 space-y-4">
+        <div className="flex items-center justify-between gap-3">
           <h2 className="text-2xl font-bold text-white">General</h2>
+          {editingSection !== "general" && (
+            <Button
+              variant="outline"
+              size="sm"
+              className={OUTLINE_DARK_BUTTON}
+              onClick={() => setEditingSection("general")}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+          )}
         </div>
 
-        <div className="space-y-4">
+        {editingSection === "general" ? (
+          <div className="space-y-4">
           <div>
             <Label className="text-white mb-2">Project Title</Label>
             <Input
@@ -214,15 +235,65 @@ export default function ProjectSettingsTab({ project, onUpdate, isOwner = false 
             />
           </div>
 
-          <Button onClick={handleSaveGeneral} disabled={isLoading}>
-            {isLoading ? "Saving..." : "Save General"}
-          </Button>
-        </div>
+            <div className="flex gap-2">
+              <Button onClick={handleSaveGeneral} disabled={isLoading}>
+                {isLoading ? "Saving..." : "Save General"}
+              </Button>
+              <Button
+                variant="outline"
+                className={OUTLINE_DARK_BUTTON}
+                disabled={isLoading}
+                onClick={() => {
+                  setGeneralData({
+                    title: project.title,
+                    description: project.description,
+                    techStackText: (project.techStack || []).join(", "),
+                    tagsText: (project.tags || []).join(", "),
+                  });
+                  setEditingSection(null);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2 text-sm">
+            <p className="text-zinc-300">
+              <span className="text-zinc-400">Title:</span> {project.title}
+            </p>
+            <p className="text-zinc-300">
+              <span className="text-zinc-400">Description:</span> {project.description}
+            </p>
+            <p className="text-zinc-300">
+              <span className="text-zinc-400">Tech Stack:</span> {(project.techStack || []).join(", ") || "Not set"}
+            </p>
+            <p className="text-zinc-300">
+              <span className="text-zinc-400">Tags:</span> {(project.tags || []).join(", ") || "Not set"}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="bg-[#232326] border border-zinc-800 rounded-lg p-6 space-y-4">
-        <h2 className="text-2xl font-bold text-white">Social Links</h2>
-        <div>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-2xl font-bold text-white">Social Links</h2>
+          {editingSection !== "links" && (
+            <Button
+              variant="outline"
+              size="sm"
+              className={OUTLINE_DARK_BUTTON}
+              onClick={() => setEditingSection("links")}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+          )}
+        </div>
+
+        {editingSection === "links" ? (
+          <>
+            <div>
           <Label className="text-white mb-2">GitHub URL</Label>
           <Input
             name="githubUrl"
@@ -231,7 +302,7 @@ export default function ProjectSettingsTab({ project, onUpdate, isOwner = false 
             className="bg-[#18181b] border-zinc-800 text-white"
           />
         </div>
-        <div>
+            <div>
           <Label className="text-white mb-2">Live Demo URL</Label>
           <Input
             name="liveDemoUrl"
@@ -240,31 +311,109 @@ export default function ProjectSettingsTab({ project, onUpdate, isOwner = false 
             className="bg-[#18181b] border-zinc-800 text-white"
           />
         </div>
-        <Button onClick={handleSaveSocialLinks} disabled={isLoading}>
-          {isLoading ? "Saving..." : "Save Links"}
-        </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleSaveSocialLinks} disabled={isLoading}>
+                {isLoading ? "Saving..." : "Save Links"}
+              </Button>
+              <Button
+                variant="outline"
+                className={OUTLINE_DARK_BUTTON}
+                disabled={isLoading}
+                onClick={() => {
+                  setSocialData({
+                    githubUrl: project.githubUrl || "",
+                    liveDemoUrl: project.liveDemoUrl || "",
+                  });
+                  setEditingSection(null);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-2 text-sm">
+            <p className="text-zinc-300 break-all">
+              <span className="text-zinc-400">GitHub:</span> {project.githubUrl || "Not set"}
+            </p>
+            <p className="text-zinc-300 break-all">
+              <span className="text-zinc-400">Live Demo:</span> {project.liveDemoUrl || "Not set"}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="bg-[#232326] border border-zinc-800 rounded-lg p-6 space-y-4">
-        <h2 className="text-2xl font-bold text-white">Screenshots</h2>
-        <Input
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-2xl font-bold text-white">Screenshots</h2>
+          {editingSection !== "screenshots" && (
+            <Button
+              variant="outline"
+              size="sm"
+              className={OUTLINE_DARK_BUTTON}
+              onClick={() => setEditingSection("screenshots")}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+          )}
+        </div>
+
+        {editingSection === "screenshots" ? (
+          <>
+            <Input
           type="file"
           accept="image/*,video/*"
           multiple
           onChange={(e) => setSelectedScreenshots(Array.from(e.target.files || []))}
           className="bg-[#18181b] border-zinc-800 text-white"
         />
-        {selectedScreenshots.length > 0 && (
-          <p className="text-sm text-zinc-400">{selectedScreenshots.length} file(s) selected</p>
+            {selectedScreenshots.length > 0 && (
+              <p className="text-sm text-zinc-400">{selectedScreenshots.length} file(s) selected</p>
+            )}
+            <div className="flex gap-2">
+              <Button onClick={handleSaveScreenshots} disabled={isLoading || selectedScreenshots.length === 0}>
+                {isLoading ? "Uploading..." : "Upload Screenshots"}
+              </Button>
+              <Button
+                variant="outline"
+                className={OUTLINE_DARK_BUTTON}
+                disabled={isLoading}
+                onClick={() => {
+                  setSelectedScreenshots([]);
+                  setEditingSection(null);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-zinc-300">
+            Current media files: {(project.screenshots || []).length}
+          </p>
         )}
-        <Button onClick={handleSaveScreenshots} disabled={isLoading || selectedScreenshots.length === 0}>
-          {isLoading ? "Uploading..." : "Upload Screenshots"}
-        </Button>
       </div>
 
       <div className="bg-[#232326] border border-zinc-800 rounded-lg p-6 space-y-4">
-        <h2 className="text-2xl font-bold text-white">Project Settings</h2>
-        <div>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-2xl font-bold text-white">Project Settings</h2>
+          {editingSection !== "project" && (
+            <Button
+              variant="outline"
+              size="sm"
+              className={OUTLINE_DARK_BUTTON}
+              onClick={() => setEditingSection("project")}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+          )}
+        </div>
+
+        {editingSection === "project" ? (
+          <>
+            <div>
           <Label className="text-white mb-2">Status</Label>
           <select
             value={projectSettingsData.status}
@@ -281,7 +430,7 @@ export default function ProjectSettingsTab({ project, onUpdate, isOwner = false 
             <option value="COMPLETED">Completed</option>
           </select>
         </div>
-        <div>
+            <div>
           <Label className="text-white mb-2">Visibility</Label>
           <select
             value={projectSettingsData.isPublic ? "public" : "private"}
@@ -297,9 +446,36 @@ export default function ProjectSettingsTab({ project, onUpdate, isOwner = false 
             <option value="private">Private</option>
           </select>
         </div>
-        <Button onClick={handleSaveSettings} disabled={isLoading}>
-          {isLoading ? "Saving..." : "Save Settings"}
-        </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleSaveSettings} disabled={isLoading}>
+                {isLoading ? "Saving..." : "Save Settings"}
+              </Button>
+              <Button
+                variant="outline"
+                className={OUTLINE_DARK_BUTTON}
+                disabled={isLoading}
+                onClick={() => {
+                  setProjectSettingsData({
+                    status: (project.status || "IDEA") as ProjectStatus,
+                    isPublic: Boolean(project.isPublic),
+                  });
+                  setEditingSection(null);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-2 text-sm">
+            <p className="text-zinc-300">
+              <span className="text-zinc-400">Status:</span> {project.status}
+            </p>
+            <p className="text-zinc-300">
+              <span className="text-zinc-400">Visibility:</span> {project.isPublic ? "Public" : "Private"}
+            </p>
+          </div>
+        )}
       </div>
 
       <Separator className="bg-zinc-800" />
@@ -337,6 +513,7 @@ export default function ProjectSettingsTab({ project, onUpdate, isOwner = false 
           <DialogFooter>
             <Button
               variant="outline"
+              className={OUTLINE_DARK_BUTTON}
               onClick={() => setShowDeleteDialog(false)}
             >
               Cancel

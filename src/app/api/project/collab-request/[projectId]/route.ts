@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CollaborationStatus } from "@prisma/client";
 import { emitCollabSyncToUsers } from "@/lib/collabRealtime";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 export async function POST(_req: Request, context: {params: {projectId : string}}){
     const session = await getServerSession(authOptions);
@@ -78,15 +79,13 @@ export async function POST(_req: Request, context: {params: {projectId : string}
           },
         });
 
-        await prisma.activityLog.create({
-          data: {
-            userId,
-            projectId: projectIdNumber,
-            actionType: "REQUEST_COLLABORATION",
-            description: `Requested to join project ID ${projectId}`,
-            targetId: createdCollab.id,
-            targetType: "Collaboration",
-          },
+        await createActivityAndNotify({
+          userId,
+          projectId: projectIdNumber,
+          actionType: "REQUEST_COLLABORATION",
+          description: `Requested to join project ID ${projectId}`,
+          targetId: createdCollab.id,
+          targetType: "Collaboration",
         });
 
         emitCollabSyncToUsers([userId, project.userId], {

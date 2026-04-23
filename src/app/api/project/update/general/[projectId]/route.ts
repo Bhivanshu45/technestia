@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { NextResponse } from "next/server";
 import { AccessLevel, CollaborationStatus } from "@prisma/client";
 import { updateProjectSchema } from "@/validations/projectSchemas/updateProjectSchema";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 export async function PATCH(
   req: Request,
@@ -92,6 +93,15 @@ export async function PATCH(
         techStack,
         tags,
       },
+    });
+
+    await createActivityAndNotify({
+      userId,
+      projectId: projectIdNumber,
+      actionType: "UPDATE_PROJECT",
+      description: `Updated project "${cleanTitle}" details`,
+      targetId: projectIdNumber,
+      targetType: "Project",
     });
 
     return NextResponse.json(

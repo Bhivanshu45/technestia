@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CollaborationStatus } from "@prisma/client";
 import { checkPermission } from "@/utils/checkPermission";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 export async function DELETE(req: Request, context: { params: { projectId: string } }) {
   const session = await getServerSession(authOptions);
@@ -126,6 +127,20 @@ export async function DELETE(req: Request, context: { params: { projectId: strin
         status: CollaborationStatus.ACCEPTED,
       },
     });
+
+    await createActivityAndNotify(
+      {
+        userId,
+        projectId: projectIdNumber,
+        actionType: "REMOVED_FORM_PROJECT",
+        description: `Removed user ${targetUserId} from project ${projectIdNumber}`,
+        targetId: targetUserId,
+        targetType: "User",
+      },
+      {
+        recipientUserIds: [targetUserId, project.userId],
+      }
+    );
 
     return NextResponse.json(
       {

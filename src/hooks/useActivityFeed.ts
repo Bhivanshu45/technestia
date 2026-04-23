@@ -1,6 +1,8 @@
+import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { ActivityLog } from "@/types/activity";
+import { getSocket } from "@/socket";
 
 export interface ActivityFeedItem extends ActivityLog {
   projectTitle?: string;
@@ -16,6 +18,7 @@ export function useActivityFeed(
   projects: { id: number; title: string }[]
 ) {
   const sortedProjects = [...projects].sort((a, b) => a.id - b.id);
+  const projectIds = useMemo(() => new Set(sortedProjects.map((p) => p.id)), [sortedProjects]);
   const key =
     sortedProjects.length > 0
       ? ["activity-feed", sortedProjects.map((p) => p.id).join(",")]
@@ -46,8 +49,39 @@ export function useActivityFeed(
     return { activityLogs: merged };
   });
 
+  const [liveActivityLogs, setLiveActivityLogs] = useState<ActivityFeedItem[]>([]);
+
+  useEffect(() => {
+    setLiveActivityLogs(data?.activityLogs || []);
+  }, [data?.activityLogs]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket.connected) socket.connect();
+
+    const handleActivityNew = (payload: ActivityFeedItem) => {
+      if (!payload?.id || !payload?.projectId) return;
+      if (!projectIds.has(payload.projectId)) return;
+
+      setLiveActivityLogs((prev) => {
+        if (prev.some((item) => item.id === payload.id)) return prev;
+        const next = [payload, ...prev];
+        next.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+        return next;
+      });
+    };
+
+    socket.on("activity:new", handleActivityNew);
+    return () => {
+      socket.off("activity:new", handleActivityNew);
+    };
+  }, [projectIds]);
+
   return {
-    activityLogs: data?.activityLogs || [],
+    activityLogs: liveActivityLogs,
     isLoading,
     isError: error,
     mutate,

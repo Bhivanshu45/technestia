@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AccessLevel, CollaborationStatus } from "@prisma/client";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 export async function PUT(req: Request, context: { params: { milestoneId: string } }) {
     const session = await getServerSession(authOptions);
@@ -87,16 +88,14 @@ export async function PUT(req: Request, context: { params: { milestoneId: string
             }
         });
 
-        await prisma.activityLog.create({
-            data: {
-                userId,
-                projectId: milestone.projectId,
-                actionType: "UPDATE_MILESTONE",
-                description: `Milestone "${title}" updated successfully.`,
-                targetId: milestoneIdNumber,
-                targetType: "MILESTONE",
-            }
-        })
+        await createActivityAndNotify({
+            userId,
+            projectId: milestone.projectId,
+            actionType: "UPDATE_MILESTONE",
+            description: `Milestone "${title}" updated successfully.`,
+            targetId: milestoneIdNumber,
+            targetType: "MILESTONE",
+        });
 
         return NextResponse.json(
             { success: true, message: "Milestone updated successfully", milestone: updatedMilestone },

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
 import SearchBar from "../common/SearchBar";
 import { Button } from "../ui/button";
@@ -8,12 +8,16 @@ import { Bell, MessageCircle } from "lucide-react";
 import { useSession } from "next-auth/react";
 import UserMenu from "./UserMenu";
 import { useChatRooms } from "@/hooks/useChatRooms";
+import { useNotifications } from "@/hooks/useNotifications";
 import { getSocket } from "@/socket";
+import { toast } from "sonner";
 
 const Navbar = () => {
   const { data: session } = useSession();
   const pathname = usePathname();
   const { totalUnreadCount, mutate } = useChatRooms();
+  const { unreadCount: notificationUnreadCount } = useNotifications();
+  const shownNotificationIdsRef = useRef<Set<number>>(new Set());
   const currentChatRoomId = pathname?.startsWith("/chat/")
     ? Number(pathname.split("/")[2])
     : null;
@@ -87,6 +91,39 @@ const Navbar = () => {
     };
   }, [session?.user?.id, handleRoomSync]);
 
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const socket = getSocket();
+    if (!socket.connected) socket.connect();
+
+    const handleNotificationNew = (payload: {
+      id?: number;
+      message?: string;
+    }) => {
+      if (!payload?.id) return;
+      if (shownNotificationIdsRef.current.has(payload.id)) return;
+      shownNotificationIdsRef.current.add(payload.id);
+
+      if (pathname?.startsWith("/activity/notifications")) return;
+
+      toast.info(payload.message || "You have a new notification", {
+        action: {
+          label: "View",
+          onClick: () => {
+            window.location.href = "/activity/notifications";
+          },
+        },
+      });
+    };
+
+    socket.on("notification:new", handleNotificationNew);
+
+    return () => {
+      socket.off("notification:new", handleNotificationNew);
+    };
+  }, [session?.user?.id, pathname]);
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 w-full flex items-center text-white bg-[#0D0D0D] border-b-2 border-[#52525B]">
       <div className="w-full flex flex-col justify-center items-center py-2">
@@ -129,9 +166,14 @@ const Navbar = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="cursor-pointer hover:bg-[#52525B]"
+                  className="cursor-pointer hover:bg-[#52525B] relative"
                 >
                   <Bell className="h-8 w-8" />
+                  {notificationUnreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full w-5 h-5 text-[10px] font-semibold flex items-center justify-center">
+                      {notificationUnreadCount > 9 ? "9+" : notificationUnreadCount}
+                    </span>
+                  )}
                 </Button>
               </Link>
             )}

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { NextResponse } from "next/server";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 export async function DELETE(
   _req: Request,
@@ -54,8 +55,8 @@ export async function DELETE(
       where: { id: projectId },
     });
 
-    await prisma.activityLog.create({
-      data: {
+    await createActivityAndNotify(
+      {
         userId,
         projectId,
         actionType: "DELETE_PROJECT",
@@ -63,7 +64,11 @@ export async function DELETE(
         targetId: projectId,
         targetType: "Project",
       },
-    });
+      {
+        recipientUserIds: [userId],
+        projectTitle: project.title,
+      },
+    );
 
     return NextResponse.json(
       {

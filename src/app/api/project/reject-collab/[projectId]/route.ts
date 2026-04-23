@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AccessLevel, CollaborationStatus } from "@prisma/client";
 import { emitCollabSyncToUsers } from "@/lib/collabRealtime";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 export async function PATCH(
   req: Request,
@@ -103,15 +104,15 @@ export async function PATCH(
       },
     });
 
-    await prisma.activityLog.create({
-      data: {
-        userId,
-        projectId: projectIdNumber,
-        actionType: "REJECT_COLLABORATION",
-        description: `Rejected collaboration request of user ID ${collab.userId}`,
-        targetId: collab.id,
-        targetType: "Collaboration",
-      },
+    await createActivityAndNotify({
+      userId,
+      projectId: projectIdNumber,
+      actionType: "REJECT_COLLABORATION",
+      description: `Rejected collaboration request of user ID ${collab.userId}`,
+      targetId: collab.id,
+      targetType: "Collaboration",
+    }, {
+      recipientUserIds: [collab.userId],
     });
 
     emitCollabSyncToUsers([userId, collab.userId], {

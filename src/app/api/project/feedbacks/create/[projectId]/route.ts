@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 export const createFeedbackSchema = z.object({
     content: z.string().min(1, "Content is required"),
@@ -87,15 +88,14 @@ export async function POST(req: Request, context: { params: { projectId: string 
             },
         });
 
-        await prisma.activityLog.create({
-            data:{
-                projectId: projectIdNumber,
-                userId: userId,
-                actionType: "CREATE_FEEDBACK",
-                targetId: projectIdNumber,
-                description: `User ${session.user.name} created feedback for project ${projectIdNumber}`,
-            }
-        })
+        await createActivityAndNotify({
+          projectId: projectIdNumber,
+          userId,
+          actionType: "CREATE_FEEDBACK",
+          targetId: projectIdNumber,
+          targetType: "Feedback",
+          description: `User ${session.user.name} created feedback for project ${projectIdNumber}`,
+        });
 
         return NextResponse.json(
           {

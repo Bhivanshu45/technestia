@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AccessLevel, CollaborationStatus,UpdateRequestStatus } from "@prisma/client";
 import { createMilestoneSchema } from "@/validations/milestoneSchemas/createMilestoneSchema";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 export async function POST(req: Request, context: { params: { projectId: string } }) {
     const session = await getServerSession(authOptions);
@@ -115,16 +116,14 @@ export async function POST(req: Request, context: { params: { projectId: string 
             }, { status: 500 });
         }
 
-        await prisma.activityLog.create({
-          data: {
-            userId,
-            projectId: projectIdNumber,
-            actionType: "CREATE_MILESTONE",
-            description: `Created new milestone \"${createdMilestone.title}\"`,
-            targetId: createdMilestone.id,
-            targetType: "Milestone",
-          },
-        });
+                await createActivityAndNotify({
+                    userId,
+                    projectId: projectIdNumber,
+                    actionType: "CREATE_MILESTONE",
+                    description: `Created new milestone \"${createdMilestone.title}\"`,
+                    targetId: createdMilestone.id,
+                    targetType: "Milestone",
+                });
 
         return NextResponse.json({
             success: true,

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 const reactionSchema = z.object({
   reactionType: z.enum(["LIKE", "LOVE", "LAUGH", "WOW", "SAD", "ANGRY"]),
@@ -87,15 +88,13 @@ export async function POST(
      },
    });
 
-   await prisma.activityLog.create({
-     data: {
-       projectId: feedback.projectId,
-       userId: userId,
-       actionType: "REACT_FEEDBACK",
-       targetId: feedbackIdNumber,
-       targetType: "FEEDBACK",
-       description: `User reacted to feedback with ${reactionType}`,
-     },
+   await createActivityAndNotify({
+     projectId: feedback.projectId,
+     userId,
+     actionType: "REACT_FEEDBACK",
+     targetId: feedbackIdNumber,
+     targetType: "FEEDBACK",
+     description: `User reacted to feedback with ${reactionType}`,
    });
 
    return NextResponse.json(

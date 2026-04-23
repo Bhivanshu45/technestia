@@ -2,8 +2,14 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { AccessLevel, CollaborationStatus, UpdateRequestStatus } from "@prisma/client";
+import {
+    AccessLevel,
+    CollaborationStatus,
+    NotificationType,
+    UpdateRequestStatus,
+} from "@prisma/client";
 import { z } from "zod";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 const approveCompletionStatus = z.object({
     updateRequest: z.enum(["APPROVED","REJECTED"])
@@ -90,16 +96,24 @@ export async function PUT(req: Request, context: { params: { milestoneId: string
             }
         })
 
-        await prisma.activityLog.create({
-          data: {
-            userId,
-            projectId: milestone.projectId,
-            actionType: "UPDATE_MILESTONE",
-            description: `Milestone "${milestone.title}" completion status updated.`,
-            targetId: milestoneIdNumber,
-            targetType: "MILESTONE",
-          },
-        });
+                await createActivityAndNotify({
+                    userId,
+                    projectId: milestone.projectId,
+                    actionType: "UPDATE_MILESTONE",
+                    description: `Milestone "${milestone.title}" completion status updated.`,
+                    targetId: milestoneIdNumber,
+                    targetType: "MILESTONE",
+                }, {
+                    recipientUserIds: [milestone.createdById],
+                    notificationType:
+                        updateRequest === "APPROVED"
+                            ? NotificationType.MILESTONE_APPROVED
+                            : NotificationType.MILESTONE_REJECTED,
+                    notificationMessage:
+                        updateRequest === "APPROVED"
+                            ? `Milestone "${milestone.title}" update request was approved.`
+                            : `Milestone "${milestone.title}" update request was rejected.`,
+                });
 
         return NextResponse.json({
             success: true,

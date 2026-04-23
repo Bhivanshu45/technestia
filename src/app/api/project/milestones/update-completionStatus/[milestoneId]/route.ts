@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { CollaborationStatus, CompletionStatus, UpdateRequestStatus } from "@prisma/client";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 const updateCompletionSchema = z.object({
     completionStatus: z.enum(["NOT_STARTED", "IN_PROGRESS", "COMPLETED","SKIPPED"])
@@ -105,16 +106,14 @@ export async function PATCH(req: Request, context: { params: { milestoneId: stri
         });
         
 
-        await prisma.activityLog.create({
-          data: {
-            userId,
-            projectId: milestone.projectId,
-            actionType: "UPDATE_MILESTONE",
-            description: `Milestone "${milestone.title}" status ${(isCollaborator || isOwner) ? "updated successfully" : "update request forwarded."}`,
-            targetId: milestoneIdNumber,
-            targetType: "MILESTONE",
-          },
-        });
+                await createActivityAndNotify({
+                    userId,
+                    projectId: milestone.projectId,
+                    actionType: "UPDATE_MILESTONE",
+                    description: `Milestone "${milestone.title}" status ${(isCollaborator || isOwner) ? "updated successfully" : "update request forwarded."}`,
+                    targetId: milestoneIdNumber,
+                    targetType: "MILESTONE",
+                });
 
         return NextResponse.json({
             success: true,

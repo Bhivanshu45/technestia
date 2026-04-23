@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { updateScreenshotsSchema } from "@/validations/projectSchemas/updateProjectSchema";
 import { uploadToCloudinary } from "@/utils/uploadToCloudinary";
 import { AccessLevel, CollaborationStatus } from "@prisma/client";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 export async function PATCH(req: Request, context:{ params: { projectId: string } }) {
   const session = await getServerSession(authOptions);
@@ -99,6 +100,15 @@ export async function PATCH(req: Request, context:{ params: { projectId: string 
       data: {
         screenshots: uploadedScreenshots,
       },
+    });
+
+    await createActivityAndNotify({
+      userId,
+      projectId: projectIdNumber,
+      actionType: "UPDATE_PROJECT",
+      description: `Updated project screenshots (${uploadedScreenshots.length} files)`,
+      targetId: projectIdNumber,
+      targetType: "Project",
     });
 
     return NextResponse.json(

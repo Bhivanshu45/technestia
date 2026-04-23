@@ -3,6 +3,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { CollaborationStatus } from "@prisma/client";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 export async function DELETE(_req: Request, context: { params: { projectId: string } }) {
   const session = await getServerSession(authOptions);
@@ -79,16 +80,14 @@ export async function DELETE(_req: Request, context: { params: { projectId: stri
       },
     });
 
-    await prisma.activityLog.create({
-      data: {
-        userId,
-        projectId: projectIdNumber,
-        targetId: projectIdNumber,
-        targetType: "Collaboration",
-        actionType: "LEAVE_PROJECT",
-        description: `User ${userId} has left the project ${projectIdNumber}`,
-      },
-    }); 
+    await createActivityAndNotify({
+      userId,
+      projectId: projectIdNumber,
+      targetId: projectIdNumber,
+      targetType: "Collaboration",
+      actionType: "LEAVE_PROJECT",
+      description: `User ${userId} has left the project ${projectIdNumber}`,
+    });
 
     return NextResponse.json({
         success: true,

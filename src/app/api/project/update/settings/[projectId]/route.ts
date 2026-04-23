@@ -7,6 +7,7 @@ import {
   CollaborationStatus,
 } from "@prisma/client";
 import { settingsSchema } from "@/validations/projectSchemas/settingSchema";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 export async function PUT(req: Request, context: { params: { projectId: string } }) {
   const session = await getServerSession(authOptions);
@@ -82,6 +83,15 @@ export async function PUT(req: Request, context: { params: { projectId: string }
     const updated = await prisma.project.update({
       where: { id: projectIdNumber },
       data: { status, isPublic },
+    });
+
+    await createActivityAndNotify({
+      userId,
+      projectId: projectIdNumber,
+      actionType: "UPDATE_PROJECT",
+      description: `Updated project settings (status: ${status}, visibility: ${isPublic ? "public" : "private"})`,
+      targetId: projectIdNumber,
+      targetType: "Project",
     });
 
     return NextResponse.json(

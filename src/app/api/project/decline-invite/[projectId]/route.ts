@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CollaborationStatus } from "@prisma/client";
 import { emitCollabSyncToUsers } from "@/lib/collabRealtime";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 export async function PATCH(
   _req: Request,
@@ -55,15 +56,15 @@ export async function PATCH(
       },
     });
 
-    await prisma.activityLog.create({
-      data: {
-        userId,
-        projectId: projectIdNumber,
-        actionType: "REJECT_COLLABORATION",
-        description: `Declined invite for project ID ${projectIdNumber}`,
-        targetId: invite.id,
-        targetType: "Collaboration",
-      },
+    await createActivityAndNotify({
+      userId,
+      projectId: projectIdNumber,
+      actionType: "REJECT_COLLABORATION",
+      description: `Declined invite for project ID ${projectIdNumber}`,
+      targetId: invite.id,
+      targetType: "Collaboration",
+    }, {
+      recipientUserIds: [Number(invite.invitedBy)],
     });
 
     emitCollabSyncToUsers([userId, Number(invite.invitedBy)], {

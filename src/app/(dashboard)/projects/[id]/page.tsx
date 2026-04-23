@@ -51,7 +51,9 @@ export default function ProjectDetailPage() {
     );
   }
 
-  const isOwner = project.userId === parseInt(session?.user?.id || "0");
+  const currentUserId = Number(session?.user?.id || 0);
+  const ownerId = Number(project.userId ?? project.creator?.id ?? 0);
+  const isOwner = ownerId > 0 && currentUserId > 0 && ownerId === currentUserId;
   const hasAccess = isOwner || Boolean(project.accessLevel);
   const canManageProject = isOwner || project.accessLevel === "FULL";
 
@@ -104,7 +106,7 @@ export default function ProjectDetailPage() {
           <TabsTrigger value="milestones">Milestones</TabsTrigger>
           <TabsTrigger value="feedbacks">Feedbacks</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
-          {isOwner && <TabsTrigger value="settings">Settings</TabsTrigger>}
+          {canManageProject && <TabsTrigger value="settings">Settings</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">

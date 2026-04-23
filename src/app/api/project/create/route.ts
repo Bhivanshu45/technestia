@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { NextResponse } from "next/server";
 import { uploadToCloudinary } from "@/utils/uploadToCloudinary";
 import { createProjectSchema } from "@/validations/projectSchemas/createProjectSchema";
+import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -123,15 +124,13 @@ export async function POST(req: Request) {
       },
     });
 
-    await prisma.activityLog.create({
-      data: {
-        userId,
-        projectId: newProject.id,
-        actionType: "POST_PROJECT",
-        description: `Created new project \"${newProject.title}\"`,
-        targetId: newProject.id,
-        targetType: "Project",
-      },
+    await createActivityAndNotify({
+      userId,
+      projectId: newProject.id,
+      actionType: "POST_PROJECT",
+      description: `Created new project "${newProject.title}"`,
+      targetId: newProject.id,
+      targetType: "Project",
     });
 
     return NextResponse.json(
