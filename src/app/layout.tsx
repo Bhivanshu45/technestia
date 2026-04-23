@@ -15,8 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Technestia",
-  description: "Technestia – A tech collaboration & growth hub",
+  title: "Technestia | Build, collaborate, and ship faster",
+  description:
+    "Technestia is a collaborative workspace for projects, milestones, chat, and community growth.",
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon-32x32.png",
@@ -38,11 +39,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
+      <body className={`${geistSans.variable} ${geistMono.variable} bg-[#050507] text-white`}> 
         <SessionProviderWrapper>
-            {children}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.12),_transparent_30%),linear-gradient(180deg,_rgba(6,6,10,0.98)_0%,_rgba(10,10,15,0.98)_100%)]" />
+            <div className="absolute inset-0 opacity-60 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:72px_72px] [mask-image:radial-gradient(circle_at_center,white,transparent_82%)]" />
+          </div>
+          {children}
         </SessionProviderWrapper>
-        <Toaster/>
+        <Toaster />
       </body>
     </html>
   );

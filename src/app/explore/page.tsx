@@ -1,17 +1,34 @@
 "use client";
-import React from "react";
+
+import React, { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+
 import Navbar from "@/components/navbar/Navbar";
-import ExploreProjectListWrapper from "./ExploreProjectListWrapper";
 import SearchBar from "@/components/common/SearchBar";
-import { useState } from "react";
+import ExploreProjectListWrapper from "./ExploreProjectListWrapper";
 
 const ExplorePage = () => {
-  const [search, setSearch] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams.get("query") ?? "";
+  const [search, setSearch] = useState(urlQuery);
+
+  useEffect(() => {
+    setSearch(urlQuery);
+  }, [urlQuery]);
+
+  const handleSearchSubmit = (query: string) => {
+    const nextQuery = query.trim();
+    router.replace(
+      nextQuery ? `/explore?query=${encodeURIComponent(nextQuery)}` : "/explore",
+    );
+  };
+
   return (
     <>
       <Navbar />
-      <main className="w-full min-h-screen bg-[#18181b] text-[#f4f4f5e4] px-0 md:px-0 overflow-x-hidden">
-        <section className="w-full flex flex-col items-center justify-center pt-10 pb-4 bg-[#232326] border-b border-[#232326]">
+      <main className="w-full min-h-screen bg-transparent text-[#f4f4f5e4] px-0 md:px-0 overflow-x-hidden pt-28 md:pt-24">
+        <section className="w-full flex flex-col items-center justify-center pt-8 pb-4 bg-white/5 border-b border-white/10 backdrop-blur-sm">
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 text-center">
             Discover Public Projects
           </h1>
@@ -23,10 +40,12 @@ const ExplorePage = () => {
             <SearchBar
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onSubmit={handleSearchSubmit}
               placeholder="Search projects by name, tag, or creator..."
             />
           </div>
         </section>
+
         <section className="w-full flex flex-col items-center justify-center py-8 px-2">
           <div className="w-full max-w-6xl">
             <ExploreProjectListWrapper searchTerm={search} />

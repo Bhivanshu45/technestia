@@ -102,7 +102,7 @@ const ProjectDetailPage = () => {
 
   return (
     <>
-      <main className="w-full min-h-screen bg-[#0b0b0f] text-zinc-100">
+      <main className="w-full min-h-screen bg-transparent text-zinc-100">
         {/* Hero */}
         <section className="relative overflow-hidden border-b border-zinc-800/70">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-purple-500/10" />

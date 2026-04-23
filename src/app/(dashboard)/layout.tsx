@@ -28,7 +28,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#18181b] text-[#f4f4f5e4]">
+    <div className="min-h-screen bg-transparent text-[#f4f4f5e4]">
       <Navbar />
       <div className="flex">
         <DashboardSidebar />

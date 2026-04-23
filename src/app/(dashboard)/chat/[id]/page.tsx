@@ -447,7 +447,7 @@ export default function ChatRoomPage() {
 
   return (
     <div
-      className="fixed inset-0 flex flex-col overflow-hidden bg-[#18181b]"
+      className="fixed inset-0 flex flex-col overflow-hidden bg-transparent"
       style={{ top: "88px", left: "256px", right: 0, bottom: 0 }}
     >
       <div className="flex-shrink-0 border-b border-zinc-800 z-10">
@@ -481,7 +481,7 @@ export default function ChatRoomPage() {
         />
       </div>
 
-      <div className="flex-shrink-0 border-t border-zinc-800 bg-[#18181b]">
+      <div className="flex-shrink-0 border-t border-zinc-800 bg-black/25 backdrop-blur-sm">
         <MessageInput
           onSendMessage={handleSendMessage}
           isSending={isSending}
