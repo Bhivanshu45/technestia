@@ -51,7 +51,7 @@ const collageCards = [
     description: "Show progress, deadlines, and updates in a clean layout.",
   },
   {
-    src: "/landing/activity-notifications.png",
+    src: "/landing/activity-notifications.jpeg",
     alt: "Technestia activity feed and notifications board",
     title: "Activity and notifications",
     description: "Keep the product feeling active and current.",
