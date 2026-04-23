@@ -10,7 +10,7 @@ function filterUsernamePrefix(prefix: string) {
 
 export default async function generateUsername(email: string) {
   const basicPrefix = email.split("@")[0];
-  let emailPrefix = filterUsernamePrefix(basicPrefix);
+  const emailPrefix = filterUsernamePrefix(basicPrefix);
 
     let generatedUsername = `${emailPrefix}_${nanoid(4)}`;
     let isUnique = false;
