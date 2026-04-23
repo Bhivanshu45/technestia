@@ -3,8 +3,8 @@ import next from "next";
 import { Server } from "socket.io";
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
-const port = 3000;
+const hostname = process.env.HOSTNAME || "0.0.0.0";
+const port = Number(process.env.PORT || 3000);
 
 // when using middleware `hostname` and `port` must be provided below
 const app = next({ dev, hostname, port });
@@ -15,7 +15,11 @@ app.prepare().then(() => {
 
   const io = new Server(httpServer,{
     cors: {
-      origin: process.env.SOCKET_CORS_ORIGIN || "http://localhost:3000",
+      origin:
+        process.env.SOCKET_CORS_ORIGIN ||
+        process.env.RENDER_EXTERNAL_URL ||
+        process.env.NEXT_PUBLIC_SOCKET_URL ||
+        "http://localhost:3000",
       credentials: true 
     },
   });
