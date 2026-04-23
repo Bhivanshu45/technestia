@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import {
   FormItem,
   FormField,
@@ -29,7 +30,7 @@ const formSchema = z.object({
     }),
 });
 
-const ResetPassword = () => {
+const ResetPasswordContent = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const email = searchParams.get("email");
@@ -167,4 +168,10 @@ const ResetPassword = () => {
     );
 };
 
-export default ResetPassword;
+export default function ResetPassword() {
+  return (
+    <Suspense fallback={null}>
+      <ResetPasswordContent />
+    </Suspense>
+  );
+}

@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import Navbar from "@/components/navbar/Navbar";
 import SearchBar from "@/components/common/SearchBar";
 import ExploreProjectListWrapper from "./ExploreProjectListWrapper";
 
-const ExplorePage = () => {
+const ExplorePageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlQuery = searchParams.get("query") ?? "";
@@ -56,4 +56,10 @@ const ExplorePage = () => {
   );
 };
 
-export default ExplorePage;
+export default function ExplorePage() {
+  return (
+    <Suspense fallback={null}>
+      <ExplorePageContent />
+    </Suspense>
+  );
+}
