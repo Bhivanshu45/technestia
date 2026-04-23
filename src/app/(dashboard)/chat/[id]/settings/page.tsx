@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useChatRoom } from "@/hooks/useChatRoom";
 import { useChatParticipants } from "@/hooks/useChatParticipants";
 import {
@@ -31,10 +31,11 @@ import { toast } from "sonner";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import ErrorState from "@/components/common/ErrorState";
 
-export default function GroupSettingsPage({ params }: { params: { id: string } }) {
+export default function GroupSettingsPage() {
   const router = useRouter();
+  const params = useParams<{ id: string }>();
   const { data: session } = useSession();
-  const chatRoomId = parseInt(params.id);
+  const chatRoomId = params?.id ? parseInt(params.id) : NaN;
 
   const { chatRoom, isLoading: isLoadingRoom, isError: roomError, mutate: mutateRoom } = useChatRoom(chatRoomId);
   const { participants, isLoading: isLoadingParticipants, isError: participantsError, mutate: mutateParticipants } = useChatParticipants(chatRoomId);
