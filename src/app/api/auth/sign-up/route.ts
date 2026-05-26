@@ -5,11 +5,23 @@ import { signUpSchema } from "@/validations/authSchemas/signUpSchema";
 import { NextResponse } from "next/server";
 import { randomInt } from "crypto";
 import { VerifyEmailPayload } from "@/types/emailPayload";
+import { getIP } from "@/utils/getIP";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export const POST = async (req: Request) => {
   try {
-    const body = await req.json();
+    const ip = getIP(req);
+    // check rate limit based on IP address
+    const key = `signup:${ip}`;
+    const rateLimitRes = await checkRateLimit(key);
+    if (!rateLimitRes.success){
+      return NextResponse.json({
+        success: false,
+        message: "Too many requests. Please try again later.",
+      },{status: 429})
+    }
 
+    const body = await req.json();
     // validate the request data
     const parsedData = signUpSchema.safeParse(body);
     if (!parsedData.success) {

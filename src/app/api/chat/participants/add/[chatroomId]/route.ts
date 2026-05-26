@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
 import { AccessLevel, CollaborationStatus } from "@prisma/client";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(
   req: Request,
@@ -26,6 +27,20 @@ export async function POST(
   }
 
   const userId = Number(session.user.id);
+
+  // check rate limiting
+  const key = `add-chat-participants:user:${userId}:room:${chatroomIdNumber}`;
+  const rateLimitRes = await checkRateLimit(key);
+  if (!rateLimitRes.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Too many requests. Please try again later.",
+      },
+      { status: 429 }
+    );
+  }
+
 const body = await req.json();
 
 let participantIds: number[] = [];

@@ -10,6 +10,49 @@ export function useChatMessages(chatRoomId: number | null) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasLoadedOlderMessages, setHasLoadedOlderMessages] = useState(false);
 
+  const applyMessagesResponse = useCallback(
+    (data: MessagesResponse) => {
+      if (!data.messages) return;
+
+      setAllMessages((prev) => {
+        const messageMap = new Map<number, ChatMessage>();
+
+        prev.forEach((message) => {
+          messageMap.set(message.id, message);
+        });
+
+        data.messages.forEach((message) => {
+          messageMap.set(message.id, {
+            ...messageMap.get(message.id),
+            ...message,
+          });
+        });
+
+        return Array.from(messageMap.values()).sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      });
+
+      setHasMore(Boolean(hasLoadedOlderMessages ? paginationCursor : data.nextCursor));
+
+      if (!hasLoadedOlderMessages) {
+        setPaginationCursor(data.nextCursor);
+      }
+    },
+    [hasLoadedOlderMessages, paginationCursor]
+  );
+
+  const refreshMessages = useCallback(async () => {
+    if (!chatRoomId) return null;
+
+    const data = (await fetcher(
+      `/api/chat/messages/fetch/${chatRoomId}?limit=30`
+    )) as MessagesResponse;
+
+    applyMessagesResponse(data);
+    return data;
+  }, [chatRoomId, applyMessagesResponse]);
+
   useEffect(() => {
     setAllMessages([]);
     setPaginationCursor(null);
@@ -23,36 +66,11 @@ export function useChatMessages(chatRoomId: number | null) {
     fetcher,
     {
       refreshInterval: 0, // Socket-driven realtime; no periodic polling
-      revalidateOnFocus: true,
-      onSuccess: (data) => {
-        if (data.messages) {
-          setAllMessages((prev) => {
-            const messageMap = new Map<number, ChatMessage>();
-
-            prev.forEach((message) => {
-              messageMap.set(message.id, message);
-            });
-
-            data.messages.forEach((message) => {
-              messageMap.set(message.id, {
-                ...messageMap.get(message.id),
-                ...message,
-              });
-            });
-
-            return Array.from(messageMap.values()).sort(
-              (a, b) =>
-                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            );
-          });
-
-          setHasMore(Boolean(hasLoadedOlderMessages ? paginationCursor : data.nextCursor));
-
-          if (!hasLoadedOlderMessages) {
-            setPaginationCursor(data.nextCursor);
-          }
-        }
-      },
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      errorRetryCount: 0,
+      shouldRetryOnError: false,
+      onSuccess: applyMessagesResponse,
     }
   );
 
@@ -118,6 +136,7 @@ export function useChatMessages(chatRoomId: number | null) {
     isError: error,
     hasMore,
     loadMore,
+    refreshMessages,
     mutate,
     addOptimisticMessage,
     updateMessage,

@@ -5,113 +5,135 @@ import { prisma } from "@/lib/prisma";
 import { CollaborationStatus } from "@prisma/client";
 import { emitCollabSyncToUsers } from "@/lib/collabRealtime";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
+import { checkRateLimit } from "@/lib/rateLimit";
 
-export async function POST(_req: Request, context: {params: {projectId : string}}){
-    const session = await getServerSession(authOptions);
-    if(!session || !session.user || !session.user.id){
-        return NextResponse.json({
-            success: false,
-            message: "Unauthorized"
-        },{status: 401})
-    }
+export async function POST(
+  _req: Request,
+  context: { params: { projectId: string } },
+) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user || !session.user.id) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Unauthorized",
+      },
+      { status: 401 },
+    );
+  }
 
-    const userId = Number(session.user.id);
-    const { projectId } = await context.params;
-    const decodedProjectId = decodeURIComponent(projectId);
-    const projectIdNumber = Number(decodedProjectId);
+  const userId = Number(session.user.id);
+  const { projectId } = await context.params;
+  const decodedProjectId = decodeURIComponent(projectId);
+  const projectIdNumber = Number(decodedProjectId);
 
-    if (!projectIdNumber || isNaN(Number(projectIdNumber))) {
+  if (!projectIdNumber || isNaN(Number(projectIdNumber))) {
+    return NextResponse.json(
+      { success: false, message: "Invalid project ID" },
+      { status: 400 },
+    );
+  }
+
+  // check rate limiting
+  const key = `collab-request:user:${userId}:project:${projectIdNumber}`;
+  const rateLimitRes = await checkRateLimit(key);
+  if (!rateLimitRes.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Too many requests. Please try again later.",
+      },
+      { status: 429 },
+    );
+  }
+
+  try {
+    const project = await prisma.project.findUnique({
+      where: { id: projectIdNumber },
+      select: {
+        id: true,
+        userId: true,
+        isPublic: true,
+      },
+    });
+
+    if (!project) {
       return NextResponse.json(
-        { success: false, message: "Invalid project ID" },
-        { status: 400 }
+        { success: false, message: "Project not found" },
+        { status: 404 },
       );
     }
 
-    try{
-        const project = await prisma.project.findUnique({
-          where: { id: projectIdNumber },
-          select: {
-            id: true,
-            userId: true,
-            isPublic: true,
-          },
-        });
-
-        if (!project) {
-          return NextResponse.json(
-            { success: false, message: "Project not found" },
-            { status: 404 }
-          );
-        }
-
-        if (project.userId === userId) {
-          return NextResponse.json(
-            { success: false, message: "Owner cannot request collaboration" },
-            { status: 400 }
-          );
-        }
-
-        const collabExist = await prisma.collaboration.findFirst({
-          where: {
-            projectId: projectIdNumber,
-            userId,
-            status: { in: [CollaborationStatus.PENDING, CollaborationStatus.ACCEPTED] },
-            invitedBy: null, // make sure user is not already invited by someone
-          },
-        });
-
-        if(collabExist){
-            return NextResponse.json({
-                success: false,
-                message: `You are already ${collabExist.invitedBy ? "invited to join" : collabExist.status === "PENDING" ? "requested to join" : "a collaborator of" } this project.`,
-              },
-              { status: 409 }
-            );
-        }
-
-        const createdCollab = await prisma.collaboration.create({
-          data: {
-            projectId: projectIdNumber,
-            userId,
-            status: "PENDING",
-            accessLevel: "LIMITED",
-            invitedBy: null,
-          },
-        });
-
-        await createActivityAndNotify({
-          userId,
-          projectId: projectIdNumber,
-          actionType: "REQUEST_COLLABORATION",
-          description: `Requested to join project ID ${projectId}`,
-          targetId: createdCollab.id,
-          targetType: "Collaboration",
-        });
-
-        emitCollabSyncToUsers([userId, project.userId], {
-          type: "REQUEST_SENT",
-          projectId: projectIdNumber,
-          collaborationId: createdCollab.id,
-          status: "PENDING",
-          actorUserId: userId,
-          targetUserId: userId,
-          invitedBy: null,
-          updatedAt: createdCollab.lastUpdatedAt.toISOString(),
-        });
-
-        return NextResponse.json(
-          {
-            success: true,
-            message: "Collaboration request sent successfully",
-          },
-          { status: 200 }
-        );
-
-    }catch(error){
-        console.error("Request Collab Error:", error);
-        return NextResponse.json(
-          { success: false, message: "Internal Server Error" },
-          { status: 500 }
-        );
+    if (project.userId === userId) {
+      return NextResponse.json(
+        { success: false, message: "Owner cannot request collaboration" },
+        { status: 400 },
+      );
     }
+
+    const collabExist = await prisma.collaboration.findFirst({
+      where: {
+        projectId: projectIdNumber,
+        userId,
+        status: {
+          in: [CollaborationStatus.PENDING, CollaborationStatus.ACCEPTED],
+        },
+        invitedBy: null, // make sure user is not already invited by someone
+      },
+    });
+
+    if (collabExist) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `You are already ${collabExist.invitedBy ? "invited to join" : collabExist.status === "PENDING" ? "requested to join" : "a collaborator of"} this project.`,
+        },
+        { status: 409 },
+      );
+    }
+
+    const createdCollab = await prisma.collaboration.create({
+      data: {
+        projectId: projectIdNumber,
+        userId,
+        status: "PENDING",
+        accessLevel: "LIMITED",
+        invitedBy: null,
+      },
+    });
+
+    await createActivityAndNotify({
+      userId,
+      projectId: projectIdNumber,
+      actionType: "REQUEST_COLLABORATION",
+      description: `Requested to join project ID ${projectId}`,
+      targetId: createdCollab.id,
+      targetType: "Collaboration",
+    });
+
+    emitCollabSyncToUsers([userId, project.userId], {
+      type: "REQUEST_SENT",
+      projectId: projectIdNumber,
+      collaborationId: createdCollab.id,
+      status: "PENDING",
+      actorUserId: userId,
+      targetUserId: userId,
+      invitedBy: null,
+      updatedAt: createdCollab.lastUpdatedAt.toISOString(),
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Collaboration request sent successfully",
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    console.error("Request Collab Error:", error);
+    return NextResponse.json(
+      { success: false, message: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
 }

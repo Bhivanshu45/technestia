@@ -49,6 +49,7 @@ export default function ChatRoomPage() {
     isLoading: isLoadingMessages,
     hasMore,
     loadMore,
+    refreshMessages,
     mutate: mutateMessages,
     addOptimisticMessage,
     updateMessage,
@@ -72,7 +73,9 @@ export default function ChatRoomPage() {
 
   const currentUserId = session?.user?.id ? Number(session.user.id) : 0;
   const presenceTargetUserIds =
-    !chatRoom?.isGroup && chatRoom?.otherUser?.id ? [chatRoom.otherUser.id] : [];
+    !chatRoom?.isGroup && chatRoom?.otherUser?.id
+      ? [chatRoom.otherUser.id]
+      : [];
   const { isUserOnline } = useChatPresence(chatRoomId, presenceTargetUserIds);
   const { seenMap, getSeenUsers } = useChatMessageSeen(chatRoomId);
 
@@ -81,7 +84,7 @@ export default function ChatRoomPage() {
     if (chatRoomId && !hasMarkedAsRead && !isLoadingMessages) {
       markAsRead(chatRoomId);
       setHasMarkedAsRead(true);
-      
+
       // Clear unread divider by setting unreadInfo to empty
       mutateMessages(
         (prev) => {
@@ -94,10 +97,16 @@ export default function ChatRoomPage() {
             },
           };
         },
-        { revalidate: false }
+        { revalidate: false },
       );
     }
-  }, [chatRoomId, hasMarkedAsRead, isLoadingMessages, markAsRead, mutateMessages]);
+  }, [
+    chatRoomId,
+    hasMarkedAsRead,
+    isLoadingMessages,
+    markAsRead,
+    mutateMessages,
+  ]);
 
   useEffect(() => {
     for (const msg of messages) {
@@ -143,7 +152,7 @@ export default function ChatRoomPage() {
             },
           };
         },
-        { revalidate: false }
+        { revalidate: false },
       );
 
       markAsRead(chatRoomId, incoming.id);
@@ -162,7 +171,10 @@ export default function ChatRoomPage() {
       }));
     };
 
-    const handleTypingStop = (payload: { chatRoomId: number; userId: number }) => {
+    const handleTypingStop = (payload: {
+      chatRoomId: number;
+      userId: number;
+    }) => {
       if (!payload || payload.chatRoomId !== chatRoomId) return;
       setTypingUsers((prev) => {
         if (!(payload.userId in prev)) return prev;
@@ -183,7 +195,13 @@ export default function ChatRoomPage() {
       socket.off("chat:typing:stop", handleTypingStop);
       setTypingUsers({});
     };
-  }, [chatRoomId, session?.user?.id, addOptimisticMessage, markAsRead, mutateMessages]);
+  }, [
+    chatRoomId,
+    session?.user?.id,
+    addOptimisticMessage,
+    markAsRead,
+    mutateMessages,
+  ]);
 
   const handleTypingStart = () => {
     if (!chatRoomId || !session?.user?.id) return;
@@ -297,10 +315,16 @@ export default function ChatRoomPage() {
     }
   };
 
-  const handleRefresh = () => {
-    mutateRoom();
-    mutateMessages();
-    toast.success("Messages refreshed");
+  const handleRefresh = async () => {
+    try {
+      await refreshMessages();
+      await mutateRoom();
+      toast.success("Messages refreshed");
+    } catch (error: any) {
+      toast.error(
+        error?.info?.message || error?.message || "Failed to refresh messages",
+      );
+    }
   };
 
   const handleEditMessage = async (messageId: number, newContent: string) => {
@@ -457,7 +481,9 @@ export default function ChatRoomPage() {
           onRefresh={handleRefresh}
           typingText={typingText}
           presenceText={presenceText}
-          lastSeenAt={!chatRoom?.isGroup ? chatRoom?.otherUser?.lastSeenAt : undefined}
+          lastSeenAt={
+            !chatRoom?.isGroup ? chatRoom?.otherUser?.lastSeenAt : undefined
+          }
           onOpenSettings={handleOpenChatSettings}
           onRequestLeaveOrDelete={handleRequestLeaveOrDelete}
           leaveOrDeleteLabel={leaveOrDeleteLabel}

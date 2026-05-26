@@ -3,8 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
 import { getUnreadMessageCount } from "@/utils/getUnreadMessagesCount";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { getIP } from "@/utils/getIP";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -15,6 +17,23 @@ export async function GET() {
     }
 
     const currentUserId = Number(session.user.id);
+
+    // check rate limiting
+    const ip = getIP(req);
+    const key = currentUserId
+      ? `fetch-chatrooms:user:${currentUserId}`
+      : `fetch-chatrooms:ip:${ip}`;
+
+    const rateLimitRes = await checkRateLimit(key);
+    if (!rateLimitRes.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Too many requests. Please try again later.",
+        },
+        { status: 429 }
+      );
+    }
 
     const chatRooms = await prisma.chatRoom.findMany({
       where: {

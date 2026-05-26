@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { uploadToCloudinary } from "@/utils/uploadToCloudinary";
 import { sendMessageSchema } from "@/validations/chatSchema/sendMessageSchema";
 import { getUnreadMessageCount } from "@/utils/getUnreadMessagesCount";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { getIP } from "@/utils/getIP";
 
 export const runtime = "nodejs";
 
@@ -28,6 +30,23 @@ export async function POST(
     return NextResponse.json(
       { success: false, message: "Invalid chat room ID" },
       { status: 400 },
+    );
+  }
+
+  // check rate limiting
+  const ip = getIP(req);
+  const key = userId
+    ? `messages-send:user:${userId}:room:${chatroomId}`
+    : `messages-send:ip:${ip}:room:${chatroomId}`;
+
+  const rateLimitRes = await checkRateLimit(key);
+  if (!rateLimitRes.success){
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Too many requests. Please try again later.",
+      },
+      { status: 429 },
     );
   }
 
@@ -130,11 +149,15 @@ export async function POST(
     }
 
     if (io) {
-      const activeSockets = await io.in("chat:" + chatroomIdNumber).fetchSockets();
+      const activeSockets = await io
+        .in("chat:" + chatroomIdNumber)
+        .fetchSockets();
       const activeUserIds = new Set(
         activeSockets
           .map((connectedSocket: any) => connectedSocket.data?.userId)
-          .filter((connectedUserId: unknown) => typeof connectedUserId === "number"),
+          .filter(
+            (connectedUserId: unknown) => typeof connectedUserId === "number",
+          ),
       );
 
       const activeParticipants = await prisma.chatParticipant.findMany({

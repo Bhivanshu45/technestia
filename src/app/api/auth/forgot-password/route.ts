@@ -4,8 +4,25 @@ import crypto from "crypto";
 import { sendEmail } from "@/helpers/sendEmail";
 import { ResetPasswordPayload } from "@/types/emailPayload";
 import { forgotPasswordSchema } from "@/validations/authSchemas/forgotPasswordSchema";
+import { getIP } from "@/utils/getIP";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export const POST = async (req: Request) => {
+  const ip = getIP(req);
+  // check rate limit based on IP address
+  const key = `forgot-password:${ip}`;
+  const rateLimitRes = await checkRateLimit(key);
+  if (!rateLimitRes.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Too many requests. Please try again later.",
+      },
+      { status: 429 },
+    );
+  }
+
+  
   const body = await req.json();
 
   const parsedData = forgotPasswordSchema.safeParse(body);
@@ -16,7 +33,7 @@ export const POST = async (req: Request) => {
         message: "Invalid input data",
         errors: parsedData.error.flatten().fieldErrors,
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -32,7 +49,7 @@ export const POST = async (req: Request) => {
           success: false,
           message: "User not found with this email",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
     if (!user.isVerified) {
@@ -41,7 +58,7 @@ export const POST = async (req: Request) => {
           success: false,
           message: "Your account is not verified",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -79,7 +96,7 @@ export const POST = async (req: Request) => {
           success: false,
           message: "Failed to send reset password email. Try again later.",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -89,7 +106,7 @@ export const POST = async (req: Request) => {
         success: true,
         message: "Reset password link sent to your email.",
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in sending reset password email:", error);
@@ -98,7 +115,7 @@ export const POST = async (req: Request) => {
         success: false,
         message: "Reset Password link sending failed. Try again later.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 };

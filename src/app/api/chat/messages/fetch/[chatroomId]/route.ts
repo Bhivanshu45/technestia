@@ -2,18 +2,18 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 // GET /api/chat/messages/[chatroomId]?cursor=<lastMessageId>&limit=20
-
 export async function GET(
   req: Request,
-  context: { params: { chatroomId: string } }
+  context: { params: { chatroomId: string } },
 ) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user || !session.user?.id) {
     return NextResponse.json(
       { success: false, message: "Unauthorized" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
@@ -21,27 +21,40 @@ export async function GET(
   const { chatroomId } = await context.params;
   const chatroomIdNumber = Number(chatroomId);
   const { searchParams } = new URL(req.url);
-  const cursor = searchParams.get("cursor"); 
+  const cursor = searchParams.get("cursor");
   const limitParam = searchParams.get("limit");
   const limit = Math.min(Number(limitParam) || 20, 50);
 
   if (!chatroomIdNumber || isNaN(chatroomIdNumber)) {
     return NextResponse.json(
       { success: false, message: "Invalid chatroom ID" },
-      { status: 400 }
+      { status: 400 },
     );
   }
-  
+
+  // check rate limiting
+  const key = `fetch-messages:${userId}:${chatroomIdNumber}`;
+  const rateLimitRes = await checkRateLimit(key);
+  if (!rateLimitRes.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Too many requests. Please try again later.",
+      },
+      { status: 429 },
+    );
+  }
+
   try {
     // verify chatroom exists
     const chatRoom = await prisma.chatRoom.findUnique({
-        where: { id: chatroomIdNumber },
+      where: { id: chatroomIdNumber },
     });
 
     if (!chatRoom) {
       return NextResponse.json(
         { success: false, message: "Chat room not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -56,7 +69,7 @@ export async function GET(
           success: false,
           message: "You are not a participant in this chatroom",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -82,7 +95,6 @@ export async function GET(
         },
       },
     });
-
 
     const hasNextPage = messages.length > limit;
     const trimmedMessages = hasNextPage ? messages.slice(0, limit) : messages;
@@ -124,13 +136,13 @@ export async function GET(
           firstUnreadMessageId: firstUnread?.id ?? null,
         },
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("[FETCH_MESSAGES_ERROR]", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

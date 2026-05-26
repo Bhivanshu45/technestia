@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { AccessLevel, CollaborationStatus } from "@prisma/client";
 import { emitCollabSyncToUsers } from "@/lib/collabRealtime";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: Request, context: { params: { projectId: string } }) {
     const session = await getServerSession(authOptions);
@@ -27,6 +28,20 @@ export async function POST(req: Request, context: { params: { projectId: string 
         { status: 400 }
       );
     }
+
+    // check rate limiting
+    const key = `invite-collab:user:${userId}:project:${projectIdNumber}`;
+    const rateLimitRes = await checkRateLimit(key);
+    if (!rateLimitRes.success) {
+        return NextResponse.json(
+        {
+            success: false,
+            message: "Too many requests. Please try again later.",
+        },
+        { status: 429 }
+        );
+    }
+
     
     const body = await req.json();
     const giveAccess = body.giveAccess;

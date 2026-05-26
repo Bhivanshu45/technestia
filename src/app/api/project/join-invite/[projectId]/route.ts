@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { CollaborationStatus } from "@prisma/client";
 import { emitCollabSyncToUsers } from "@/lib/collabRealtime";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function PATCH(
   _req: Request,
@@ -29,6 +30,19 @@ export async function PATCH(
       { status: 400 }
     );
   }
+
+  // check rate limiting
+    const key = `join-invite:user:${userId}:project:${projectIdNumber}`;
+    const rateLimitRes = await checkRateLimit(key);
+    if (!rateLimitRes.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Too many requests. Please try again later.",
+        },
+        { status: 429 },
+      );
+    }
 
   try {
     const invite = await prisma.collaboration.findFirst({
