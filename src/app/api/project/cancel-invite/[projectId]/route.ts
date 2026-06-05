@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { CollaborationStatus } from "@prisma/client";
 import { emitCollabSyncToUsers } from "@/lib/collabRealtime";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
+import logger from "@/lib/logger";
 
 export async function PATCH(
   req: Request,
@@ -42,6 +43,7 @@ export async function PATCH(
   }
 
   try {
+    logger.info("project.cancel_invite.request_received");
     const invite = await prisma.collaboration.findFirst({
       where: {
         id: targetCollabId,
@@ -91,7 +93,7 @@ export async function PATCH(
       { status: 200 }
     );
   } catch (error) {
-    console.error("[CANCEL_INVITE_ERROR]", error);
+    logger.error("[CANCEL_INVITE_ERROR]", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

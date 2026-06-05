@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { NextResponse } from "next/server";
 import { CollaborationStatus } from "@prisma/client";
+import logger from "@/lib/logger";
 
 export async function GET(
   _req: Request,
@@ -11,6 +12,7 @@ export async function GET(
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user?.id) {
+    logger.warn("project.details.unauthorized");
     return NextResponse.json(
       { success: false, message: "Unauthorized" },
       { status: 401 }
@@ -23,6 +25,7 @@ export async function GET(
   const projectIdNumber = Number(decodedProjectId);
 
   if (!projectIdNumber || isNaN(Number(projectIdNumber))) {
+    logger.warn("project.details.invalid_project_id", { projectId });
     return NextResponse.json(
       { success: false, message: "Invalid project ID" },
       { status: 400 }
@@ -30,6 +33,7 @@ export async function GET(
   }
 
   try {
+    logger.info("project.details.request_received", { userId, projectId: projectIdNumber });
     const project = await prisma.project.findUnique({
       where: { id: projectIdNumber },
       include: {
@@ -50,6 +54,7 @@ export async function GET(
     });
 
     if (!project) {
+      logger.warn("project.details.project_not_found", { userId, projectId: projectIdNumber });
       return NextResponse.json(
         { success: false, message: "Project not found" },
         { status: 404 }
@@ -63,6 +68,7 @@ export async function GET(
     );
 
     if(!isOwner && !isCollaborator) {
+      logger.warn("project.details.forbidden", { userId, projectId: projectIdNumber, ownerId: project.userId });
       return NextResponse.json({
         success: false,
         message: "Forbidden : You are not authorised for this request"
@@ -97,7 +103,7 @@ export async function GET(
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error fetching project details:", error);
+    logger.error("project.details.error", { error: String(error), userId, projectId: projectIdNumber });
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

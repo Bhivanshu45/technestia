@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { NextResponse } from "next/server";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
+import logger from "@/lib/logger";
 
 export async function DELETE(
   _req: Request,
@@ -11,6 +12,7 @@ export async function DELETE(
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user?.id) {
+    logger.warn("project.delete.unauthorized");
     return NextResponse.json(
       { success: false, message: "Unauthorized" },
       { status: 401 }
@@ -21,6 +23,7 @@ export async function DELETE(
   const projectId = parseInt(params.projectId);
 
   if (isNaN(projectId)) {
+    logger.warn("project.delete.invalid_project_id", { projectId: params.projectId });
     return NextResponse.json(
       { success: false, message: "Invalid project ID" },
       { status: 400 }
@@ -28,6 +31,7 @@ export async function DELETE(
   }
 
   try {
+    logger.info("project.delete.request_received", { userId, projectId });
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       select: {
@@ -38,6 +42,7 @@ export async function DELETE(
     });
 
     if (!project) {
+      logger.warn("project.delete.project_not_found", { userId, projectId });
       return NextResponse.json(
         { success: false, message: "Project not found" },
         { status: 404 }
@@ -45,6 +50,7 @@ export async function DELETE(
     }
 
     if (project.userId !== userId) {
+      logger.warn("project.delete.forbidden", { userId, projectId, ownerId: project.userId });
       return NextResponse.json(
         { success: false, message: "Only project owner can delete" },
         { status: 403 }
@@ -70,6 +76,8 @@ export async function DELETE(
       },
     );
 
+    logger.info("project.delete.success", { userId, projectId });
+
     return NextResponse.json(
       {
         success: true,
@@ -78,7 +86,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
-    console.error("Delete Project Error:", error);
+    logger.error("project.delete.error", { error: String(error), userId, projectId });
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

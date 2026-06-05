@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/utils/hashPassword";
+import logger from "@/lib/logger";
 
 const setPasswordSchema = z.object({
   newPassword: passValidation,
@@ -37,6 +38,7 @@ export async function PUT(req: Request) {
   const { newPassword } = parsedData.data;
 
   try {
+    logger.info("profile.set_password.request_received");
     const userId = parseInt(session.user.id);
     const dbUser = await prisma.user.findUnique({ 
         where: { id: userId } 
@@ -75,7 +77,7 @@ export async function PUT(req: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("[SET_PASSWORD_ERROR]", error);
+    logger.error("[SET_PASSWORD_ERROR]", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
+import logger from "@/lib/logger";
 
 export async function GET(
   req: Request,
@@ -28,6 +29,7 @@ export async function GET(
     const userId = Number(session.user.id);
   try {
     
+    logger.info("chat.participants.fetch.request_received");
     const participants = await prisma.chatParticipant.findMany({
       where: { chatRoomId: chatroomIdNumber, hasLeft: false },
       include: {
@@ -66,7 +68,7 @@ export async function GET(
       participants: sortedParticipants,
     });
   } catch (error) {
-    console.error("Error fetching group participants:", error);
+    logger.error("Error fetching group participants:", error);
     return NextResponse.json(
       { success: false,message: "Internal Server Error" },
       { status: 500 }

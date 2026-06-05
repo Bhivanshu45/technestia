@@ -5,10 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { AccessLevel, CollaborationStatus,UpdateRequestStatus } from "@prisma/client";
 import { createMilestoneSchema } from "@/validations/milestoneSchemas/createMilestoneSchema";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
+import logger from "@/lib/logger";
 
 export async function POST(req: Request, context: { params: { projectId: string } }) {
     const session = await getServerSession(authOptions);
     if(!session || !session.user || !session.user.id) {
+        logger.warn("project.milestones.create.unauthorized");
         return NextResponse.json({
             success: false,
             message: "Unauthorized"
@@ -19,6 +21,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
     const decodedProjectId = decodeURIComponent(projectId);
     const projectIdNumber = Number(decodedProjectId);
     if (!projectIdNumber || isNaN(projectIdNumber)) {
+        logger.warn("project.milestones.create.invalid_project_id", { projectId });
         return NextResponse.json(
             { success: false, message: "Invalid project ID" },
             { status: 400 }
@@ -26,6 +29,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
     }
     const userId = Number(session.user.id);
     if (isNaN(userId)) {
+        logger.warn("project.milestones.create.invalid_user_id", { userId: session.user.id });
         return NextResponse.json({
             success: false,
             message: "Invalid user ID"
@@ -35,6 +39,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
     const body = await req.json();
     const parsedData = createMilestoneSchema.safeParse(body);
     if (!parsedData.success) {
+        logger.warn("project.milestones.create.validation_failed", { errors: parsedData.error.flatten().fieldErrors });
         return NextResponse.json(
             {
                 success: false,
@@ -55,6 +60,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
     } = parsedData.data;
 
     try {
+        logger.info("project.milestones.create.request_received", { userId, projectId: projectIdNumber, title });
         const project = await prisma.project.findUnique({
             where: { id: projectIdNumber },
             include: {
@@ -71,6 +77,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
         });
 
         if (!project) {
+            logger.warn("project.milestones.create.project_not_found", { userId, projectId: projectIdNumber });
             return NextResponse.json({
                 success: false,
                 message: "Project not found"
@@ -90,6 +97,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
         }
         const isFullAccessCollab = collaborator?.accessLevel === AccessLevel.FULL;
         if(!isOwner && !isFullAccessCollab) {
+            logger.warn("project.milestones.create.forbidden", { userId, projectId: projectIdNumber });
             return NextResponse.json({
                 success: false,
                 message: "You do not have permission to create milestones for this project."
@@ -110,6 +118,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
         })
 
         if (!createdMilestone) {
+            logger.error("project.milestones.create.failed_to_create", { userId, projectId: projectIdNumber });
             return NextResponse.json({
                 success: false,
                 message: "Failed to create milestone"
@@ -125,6 +134,8 @@ export async function POST(req: Request, context: { params: { projectId: string 
                     targetType: "Milestone",
                 });
 
+        logger.info("project.milestones.create.success", { userId, projectId: projectIdNumber, milestoneId: createdMilestone.id });
+
         return NextResponse.json({
             success: true,
             message: "Milestone created successfully",
@@ -132,7 +143,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
         }, { status: 201 });
 
     } catch (error) {
-        console.error("Error fetching milestones:", error);
+        logger.error("project.milestones.create.error", { error: String(error), userId, projectId: projectIdNumber });
         return NextResponse.json({
             success: false,
             message: "Internal server error"

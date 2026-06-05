@@ -208,7 +208,7 @@ export const POST = async (req: Request) => {
       error,
     });
 
-    // console.error("Register API Error:", error);
+    // logger.error("Register API Error:", error);
     return NextResponse.json(
       {
         success: false,

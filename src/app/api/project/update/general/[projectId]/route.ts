@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { AccessLevel, CollaborationStatus } from "@prisma/client";
 import { updateProjectSchema } from "@/validations/projectSchemas/updateProjectSchema";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
+import logger from "@/lib/logger";
 
 export async function PATCH(
   req: Request,
@@ -13,6 +14,7 @@ export async function PATCH(
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user || !session.user?.id) {
+    logger.warn("project.update_general.unauthorized");
     return NextResponse.json(
       { success: false, message: "Unauthorized" },
       { status: 401 }
@@ -26,6 +28,7 @@ export async function PATCH(
   const projectIdNumber = Number(decodedProjectId);
 
   if (!projectIdNumber || isNaN(Number(projectIdNumber))) {
+    logger.warn("project.update_general.invalid_project_id", { projectId });
     return NextResponse.json(
       { success: false, message: "Invalid project ID" },
       { status: 400 }
@@ -36,6 +39,7 @@ export async function PATCH(
   const parsedData = updateProjectSchema.safeParse(body);
 
   if (!parsedData.success) {
+    logger.warn("project.update_general.validation_failed", { errors: parsedData.error.errors });
     return NextResponse.json(
       {
         success: false,
@@ -49,6 +53,7 @@ export async function PATCH(
   const { title, description, techStack, tags } = parsedData.data;
 
   try {
+    logger.info("project.update_general.request_received", { userId, projectId: projectIdNumber });
     const project = await prisma.project.findUnique({
       where: { id: projectIdNumber },
       select: {
@@ -66,6 +71,7 @@ export async function PATCH(
     });
 
     if (!project) {
+      logger.warn("project.update_general.project_not_found", { userId, projectId: projectIdNumber });
       return NextResponse.json(
         { success: false, message: "Project not found" },
         { status: 404 }
@@ -76,6 +82,7 @@ export async function PATCH(
     const isFullCollaborator = project.collaborations.length > 0;
 
     if (!isOwner && !isFullCollaborator) {
+      logger.warn("project.update_general.forbidden", { userId, projectId: projectIdNumber, ownerId: project.userId });
       return NextResponse.json(
         { success: false, message: "Forbidden" },
         { status: 403 }
@@ -104,6 +111,8 @@ export async function PATCH(
       targetType: "Project",
     });
 
+    logger.info("project.update_general.success", { userId, projectId: projectIdNumber });
+
     return NextResponse.json(
       {
         success: true,
@@ -113,7 +122,7 @@ export async function PATCH(
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error updating project general info:", error);
+    logger.error("project.update_general.error", { error: String(error), userId, projectId: projectIdNumber });
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

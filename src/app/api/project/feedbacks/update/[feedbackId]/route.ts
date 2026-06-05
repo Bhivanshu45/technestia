@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { createFeedbackSchema } from "../../create/[projectId]/route";
+import logger from "@/lib/logger";
 
 export async function PUT(
   req: Request,
@@ -55,6 +56,7 @@ export async function PUT(
   const { content, rating } = parsedData.data;
 
   try {
+    logger.info("project.feedbacks.update.request_received");
     const existingFeedback = await prisma.feedback.findUnique({
       where: { id: feedbackIdNumber },
       select: {

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authOptions } from "../../auth/[...nextauth]/options";
 import { createChatSchema } from "@/validations/chatSchema/createChatSchema";
 import { AccessLevel, CollaborationStatus } from "@prisma/client";
+import logger from "@/lib/logger";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
   let chatName = name;
 
   try {
+    logger.info("chat.create.request_received");
     if (isGroup && !chatName && projectId) {
       const project = await prisma.project.findUnique({
         where: { id: projectId },
@@ -259,7 +261,7 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("[CHAT_CREATE_ERROR]", error);
+    logger.error("[CHAT_CREATE_ERROR]", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }

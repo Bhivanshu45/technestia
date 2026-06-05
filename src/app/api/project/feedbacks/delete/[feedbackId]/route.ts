@@ -2,6 +2,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import logger from "@/lib/logger";
 
 export async function DELETE(
   req: Request,
@@ -40,7 +41,7 @@ export async function DELETE(
   }
 
   try {
-
+    logger.info("project.feedbacks.delete.request_received");
     const existing = await prisma.feedback.findFirst({
       where: { id: feedbackIdNumber },
     });

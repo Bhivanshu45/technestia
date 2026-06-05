@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
+import logger from "@/lib/logger";
 
 export async function PATCH(
   req: Request,
@@ -27,6 +28,7 @@ export async function PATCH(
   }
 
   try {
+    logger.info("chat.participants.leave.request_received");
     const chatRoom = await prisma.chatRoom.findUnique({
       where: { id: chatroomIdNumber },
       include: {
@@ -107,7 +109,7 @@ export async function PATCH(
       { status: 200 }
     );
   } catch (error) {
-    console.error("[LEAVE_CHATROOM_ERROR]", error);
+    logger.error("[LEAVE_CHATROOM_ERROR]", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }

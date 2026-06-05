@@ -2,6 +2,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import logger from "@/lib/logger";
 
 export async function GET(
   req: Request,
@@ -40,6 +41,7 @@ export async function GET(
   }
 
   try {
+    logger.info("project.feedbacks.fetch_all.request_received");
     // anyone can create feedback for a project
     const project = await prisma.project.findUnique({
       where: { id: projectIdNumber },

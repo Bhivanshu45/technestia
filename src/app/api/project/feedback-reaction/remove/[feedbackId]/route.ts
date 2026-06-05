@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
+import logger from "@/lib/logger";
 
 export async function DELETE(
   req: Request,
@@ -24,6 +25,7 @@ export async function DELETE(
   }
 
   try {
+    logger.info("project.feedback_reaction.remove.request_received");
     const feedback = await prisma.feedback.findUnique({
       where: { id: feedbackIdNumber },
     });
@@ -64,7 +66,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
-    console.error("[FEEDBACK_REACTION_POST]", error);
+    logger.error("[FEEDBACK_REACTION_POST]", error);
     return NextResponse.json(
       { message: "Internal Server Error" },
       { status: 500 }

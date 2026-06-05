@@ -5,9 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { getUnreadMessageCount } from "@/utils/getUnreadMessagesCount";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { getIP } from "@/utils/getIP";
+import logger from "@/lib/logger";
 
 export async function GET(req: Request) {
   try {
+    logger.info("chat.fetch_rooms.request_received");
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -128,7 +130,7 @@ export async function GET(req: Request) {
       { status: 200 }
     );
   } catch (err) {
-    console.error("[GET_CHATROOMS_ERROR]", err);
+    logger.error("[GET_CHATROOMS_ERROR]", err);
     return NextResponse.json(
       { success: false, message: "Server error" },
       { status: 500 }

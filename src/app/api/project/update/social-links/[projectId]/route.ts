@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { AccessLevel, CollaborationStatus } from "@prisma/client";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
+import logger from "@/lib/logger";
 
 const linksSchema = z.object({
   githubUrl: z.string().url().nullable().or(z.literal("")),
@@ -50,6 +51,7 @@ export async function PATCH(req: Request, context: { params: { projectId: string
   const { githubUrl, liveDemoUrl } = parsedData.data;
 
   try {
+    logger.info("project.update.social_links.request_received");
     const project = await prisma.project.findUnique({
       where: { id: projectIdNumber },
       select: {
@@ -108,7 +110,7 @@ export async function PATCH(req: Request, context: { params: { projectId: string
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error updating links:", error);
+    logger.error("Error updating links:", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

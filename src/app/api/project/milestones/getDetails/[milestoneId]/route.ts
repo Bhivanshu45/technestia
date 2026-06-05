@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CollaborationStatus } from "@prisma/client";
+import logger from "@/lib/logger";
 
 export async function GET(_req: Request, context: { params: { milestoneId: string } }) {
     const session = await getServerSession(authOptions);
@@ -34,6 +35,7 @@ export async function GET(_req: Request, context: { params: { milestoneId: strin
     }
 
     try {
+    logger.info("project.milestones.getDetails.request_received");
         const milestone = await prisma.milestone.findUnique({
             where: { id: milestoneIdNumber },
             include: {
@@ -74,7 +76,7 @@ export async function GET(_req: Request, context: { params: { milestoneId: strin
         }, { status: 200 });
 
     } catch (error) {
-        console.error("Error fetching milestone details:", error);
+        logger.error("Error fetching milestone details:", error);
         return NextResponse.json({
             success: false,
             message: "Internal server error"

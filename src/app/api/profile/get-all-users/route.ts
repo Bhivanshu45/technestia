@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import logger from "@/lib/logger";
 
 export async function GET(_req: Request) {
   try {
+    logger.info("profile.get_all_users.request_received");
     const users = await prisma.user.findMany({
       select: {
         id: true,
@@ -22,7 +24,7 @@ export async function GET(_req: Request) {
         users 
     }, { status: 200 });
   } catch (error) {
-    console.error("[GET_ALL_PUBLIC_PROFILES_ERROR]", error);
+    logger.error("profile.get_all_users.error", { error: String(error) });
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

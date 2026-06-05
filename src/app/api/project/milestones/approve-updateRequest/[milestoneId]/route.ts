@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
+import logger from "@/lib/logger";
     AccessLevel,
     CollaborationStatus,
     NotificationType,
@@ -57,6 +58,7 @@ export async function PUT(req: Request, context: { params: { milestoneId: string
     const { updateRequest } = parsedData.data;
 
     try{
+    logger.info("project.milestones.approve_updateRequest.request_received");
         const milestone = await prisma.milestone.findUnique({
             where: { 
                 id: milestoneIdNumber,
@@ -122,7 +124,7 @@ export async function PUT(req: Request, context: { params: { milestoneId: string
         },{status: 200})
 
     }catch (error) {
-        console.error("Error approving milestone:", error);
+        logger.error("Error approving milestone:", error);
         return NextResponse.json(
             { success: false, message: "Internal server error" },
             { status: 500 }

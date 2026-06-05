@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { CollaborationStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function GET(
   _req: Request,
@@ -18,6 +19,7 @@ export async function GET(
   }
 
   try {
+    logger.info("project.public_details.request_received");
     const project = await prisma.project.findUnique({
       where: { id: projectIdNumber },
       select: {
@@ -79,7 +81,7 @@ export async function GET(
     );
     
   } catch (error) {
-    console.error("Error in public project details:", error);
+    logger.error("Error in public project details:", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

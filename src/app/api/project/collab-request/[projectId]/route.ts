@@ -6,6 +6,7 @@ import { CollaborationStatus } from "@prisma/client";
 import { emitCollabSyncToUsers } from "@/lib/collabRealtime";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 import { checkRateLimit } from "@/lib/rateLimit";
+import logger from "@/lib/logger";
 
 export async function POST(
   _req: Request,
@@ -48,6 +49,7 @@ export async function POST(
   }
 
   try {
+    logger.info("project.collab_request.request_received");
     const project = await prisma.project.findUnique({
       where: { id: projectIdNumber },
       select: {
@@ -130,7 +132,7 @@ export async function POST(
       { status: 200 },
     );
   } catch (error) {
-    console.error("Request Collab Error:", error);
+    logger.error("Request Collab Error:", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 },

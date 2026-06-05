@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import logger from "@/lib/logger";
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const query = searchParams.get("query")?.trim();
+    logger.info("search.milestones.request_received", { query, tech: searchParams.get("tech"), tag: searchParams.get("tag"), status: searchParams.get("status"), completionStatus: searchParams.get("completionStatus") });
 
     const techRaw = searchParams.get("tech");
     const tech = techRaw
@@ -92,7 +94,7 @@ export async function GET(req: Request) {
       data: milestones,
     });
   } catch (error) {
-    console.error("SEARCH MILESTONES API ERROR:", error);
+    logger.error("search.milestones.error", { error: String(error) });
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

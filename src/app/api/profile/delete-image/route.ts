@@ -3,6 +3,7 @@ import { authOptions } from "../../auth/[...nextauth]/options";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { deleteFromCloudinary } from "@/utils/deleteFromCloudinary";
+import logger from "@/lib/logger";
 
 export async function DELETE(_req: Request){
     const session = await getServerSession(authOptions);
@@ -15,6 +16,7 @@ export async function DELETE(_req: Request){
     }
 
     try{
+    logger.info("profile.delete_image.request_received");
         const userId = parseInt(session.user.id);
         const dbUser = await prisma.user.findUnique({
           where: { id: userId },
@@ -42,7 +44,7 @@ export async function DELETE(_req: Request){
         );
 
     }catch(error){
-        console.error("[DELETE_PROFILE_IMAGE_ERROR]", error);
+        logger.error("[DELETE_PROFILE_IMAGE_ERROR]", error);
         return NextResponse.json(
           { success: false, message: "Internal Server Error" },
           { status: 500 }

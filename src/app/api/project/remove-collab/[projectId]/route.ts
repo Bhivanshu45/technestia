@@ -5,10 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { CollaborationStatus } from "@prisma/client";
 import { checkPermission } from "@/utils/checkPermission";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
+import logger from "@/lib/logger";
 
 export async function DELETE(req: Request, context: { params: { projectId: string } }) {
   const session = await getServerSession(authOptions);
   if (!session || !session?.user || !session.user.id) {
+    logger.warn("project.remove_collab.unauthorized");
     return NextResponse.json({
         success: false,
         message: "Unauthorized",
@@ -21,6 +23,7 @@ export async function DELETE(req: Request, context: { params: { projectId: strin
   const projectIdNumber = Number(decodedProjectId);
 
   if (!projectIdNumber || isNaN(Number(projectIdNumber))) {
+    logger.warn("project.remove_collab.invalid_project_id", { projectId });
     return NextResponse.json(
       { success: false, message: "Invalid project ID" },
       { status: 400 }
@@ -30,6 +33,7 @@ export async function DELETE(req: Request, context: { params: { projectId: strin
   const body = await req.json();
   const targetUserId = Number(body.userId);
     if (isNaN(targetUserId)) {
+        logger.warn("project.remove_collab.invalid_target_user", { userId, projectId: projectIdNumber, targetUserId: body.userId });
         return NextResponse.json(
         { success: false, message: "Invalid user ID" },
         { status: 400 }
@@ -37,6 +41,7 @@ export async function DELETE(req: Request, context: { params: { projectId: strin
     }
 
     if(userId === targetUserId){
+      logger.warn("project.remove_collab.self_remove_blocked", { userId, projectId: projectIdNumber });
         return NextResponse.json(
             { success: false, message: "You cannot remove yourself from the project." },
             { status: 403 }
@@ -44,6 +49,7 @@ export async function DELETE(req: Request, context: { params: { projectId: strin
     }
 
   try {
+    logger.info("project.remove_collab.request_received", { userId, projectId: projectIdNumber, targetUserId });
     const project = await prisma.project.findUnique({
       where: { id: projectIdNumber },
       select: {
@@ -65,6 +71,7 @@ export async function DELETE(req: Request, context: { params: { projectId: strin
     });
 
     if (!project) {
+      logger.warn("project.remove_collab.project_not_found", { userId, projectId: projectIdNumber });
       return NextResponse.json(
         { success: false, message: "Project not found" },
         { status: 404 }
@@ -72,6 +79,7 @@ export async function DELETE(req: Request, context: { params: { projectId: strin
     }
 
     if (project.userId === targetUserId) {
+      logger.warn("project.remove_collab.owner_blocked", { userId, projectId: projectIdNumber, targetUserId });
       return NextResponse.json(
         { success: false, message: "Owner cannot be removed from the project" },
         { status: 403 }
@@ -86,6 +94,7 @@ export async function DELETE(req: Request, context: { params: { projectId: strin
     );
 
     if (!isTargetCollaborator) {
+      logger.warn("project.remove_collab.target_not_collaborator", { userId, projectId: projectIdNumber, targetUserId });
       return NextResponse.json(
         {
           success: false,
@@ -103,6 +112,7 @@ export async function DELETE(req: Request, context: { params: { projectId: strin
     const isOwner = project.userId === userId;
 
     if (!isOwner && !isRemoverCollaborator) {
+      logger.warn("project.remove_collab.forbidden", { userId, projectId: projectIdNumber, targetUserId });
       return NextResponse.json({
           success: false,
           message: "You are not a contributor on this project.",
@@ -113,6 +123,7 @@ export async function DELETE(req: Request, context: { params: { projectId: strin
     // check if user has permission to remove collaborator
     const hasPermission = checkPermission({project, userId, targetUserId});
     if (!hasPermission) {
+      logger.warn("project.remove_collab.permission_denied", { userId, projectId: projectIdNumber, targetUserId });
       return NextResponse.json({
           success: false,
           message: "You do not have permission to remove this collaborator.",
@@ -142,6 +153,8 @@ export async function DELETE(req: Request, context: { params: { projectId: strin
       }
     );
 
+    logger.info("project.remove_collab.success", { userId, projectId: projectIdNumber, targetUserId });
+
     return NextResponse.json(
       {
         success: true,
@@ -150,7 +163,7 @@ export async function DELETE(req: Request, context: { params: { projectId: strin
       { status: 200 }
     );
   }catch(error){
-    console.error("REMOVE API ERROR:", error);
+    logger.error("project.remove_collab.error", { error: String(error), userId, projectId: projectIdNumber, targetUserId });
     return NextResponse.json(
       { success: false, message: "An error occurred while removing the collaborator." },
       { status: 500 }

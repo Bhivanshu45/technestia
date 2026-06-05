@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
 import { AccessLevel, CollaborationStatus } from "@prisma/client";
 import { checkRateLimit } from "@/lib/rateLimit";
+import logger from "@/lib/logger";
 
 export async function POST(
   req: Request,
@@ -61,6 +62,7 @@ if (participantIds.length === 0) {
 
 
   try {
+    logger.info("chat.participants.add.request_received");
     const chatroom = await prisma.chatRoom.findUnique({
       where: { id: chatroomIdNumber },
       include: {
@@ -192,7 +194,7 @@ if (participantIds.length === 0) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error adding participants:", error);
+    logger.error("Error adding participants:", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

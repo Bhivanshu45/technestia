@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
+import logger from "@/lib/logger";
 
 const reactionSchema = z.object({
   reactionType: z.enum(["LIKE", "LOVE", "LAUGH", "WOW", "SAD", "ANGRY"]),
@@ -40,6 +41,7 @@ export async function POST(
 
   const { reactionType } = parsed.data;
   try {
+    logger.info("project.feedback_reaction.create.request_received");
     const feedback = await prisma.feedback.findUnique({
       where: { id: feedbackIdNumber },
     });
@@ -106,7 +108,7 @@ export async function POST(
      { status: 201 }
    );
   } catch (error) {
-    console.error("[FEEDBACK_REACTION_POST]", error);
+    logger.error("[FEEDBACK_REACTION_POST]", error);
     return NextResponse.json(
       { message: "Internal Server Error" },
       { status: 500 }

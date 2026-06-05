@@ -5,11 +5,13 @@ import { NextResponse } from "next/server";
 import { uploadToCloudinary } from "@/utils/uploadToCloudinary";
 import { createProjectSchema } from "@/validations/projectSchemas/createProjectSchema";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
+import logger from "@/lib/logger";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user?.id) {
+    logger.warn("project.create.unauthorized");
     return NextResponse.json(
       { success: false, message: "Unauthorized" },
       { status: 401 }
@@ -19,6 +21,7 @@ export async function POST(req: Request) {
   const userId = Number(session.user.id);
 
   if (isNaN(userId)) {
+    logger.warn("project.create.invalid_user_id", { userId: session.user.id });
     return NextResponse.json(
       { success: false, message: "Invalid user id" },
       { status: 400 }
@@ -29,6 +32,7 @@ export async function POST(req: Request) {
   const parsed = createProjectSchema.safeParse(body);
 
   if (!parsed.success) {
+    logger.warn("project.create.validation_failed", { errors: parsed.error.flatten().fieldErrors });
     return NextResponse.json(
       {
         success: false,
@@ -52,15 +56,18 @@ export async function POST(req: Request) {
   } = parsed.data;
 
   try {
+    logger.info("project.create.request_received", { userId, title });
     const dbUser = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!dbUser) {
+      logger.warn("project.create.user_not_found", { userId });
       return NextResponse.json(
         { success: false, message: "User not found" },
         { status: 403 }
       );
     }
     if (!dbUser.isVerified) {
+      logger.warn("project.create.user_not_verified", { userId });
       return NextResponse.json(
         { success: false, message: "User not verified" },
         { status: 403 }
@@ -72,6 +79,7 @@ export async function POST(req: Request) {
       });
 
     if (existing) {
+        logger.warn("project.create.duplicate_title", { userId, title });
       return NextResponse.json(
         { success: false, message: "Project with same title exists" },
         { status: 409 }
@@ -79,6 +87,8 @@ export async function POST(req: Request) {
     }
 
     const uploadedScreenshots = await Promise.all(
+
+    logger.info("project.create.success", { userId, projectId: newProject.id, title: newProject.title });
       screenshots.map(async (file) => {
         const buffer = Buffer.from(file.buffer, "base64");
         const type = file.type.startsWith("video") ? "video" : "image";
@@ -142,7 +152,7 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Create Project Error:", error);
+    logger.error("project.create.error", { error: String(error) });
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

@@ -3,14 +3,17 @@ import { verifyOtpSchema } from "@/validations/authSchemas/verifyOtpSchema";
 import { NextResponse } from "next/server";
 import { getIP } from "@/utils/getIP";
 import { checkRateLimit } from "@/lib/rateLimit";
+import logger from "@/lib/logger";
 
 export const POST = async (req: Request) => {
   try {
     const ip = getIP(req);
+    logger.info("auth.verify_otp.request_received", { ip });
     // check rate limit based on IP address
     const key = `verify-otp:${ip}`;
     const rateLimitRes = await checkRateLimit(key);
     if (!rateLimitRes.success) {
+      logger.warn("auth.verify_otp.rate_limited", { ip });
       return NextResponse.json(
         {
           success: false,
@@ -24,6 +27,10 @@ export const POST = async (req: Request) => {
 
     const parsedData = verifyOtpSchema.safeParse(body);
     if (!parsedData.success) {
+      logger.warn("auth.verify_otp.validation_failed", {
+        ip,
+        errors: parsedData.error.flatten().fieldErrors,
+      });
       return NextResponse.json(
         {
           success: false,
@@ -35,11 +42,13 @@ export const POST = async (req: Request) => {
     }
 
     const { email, otp } = parsedData.data;
+    logger.info("auth.verify_otp.lookup_started", { email });
 
     const user = await prisma.user.findUnique({
       where: { email },
     });
     if (!user) {
+      logger.warn("auth.verify_otp.user_not_found", { email });
       return NextResponse.json(
         {
           success: false,
@@ -50,6 +59,7 @@ export const POST = async (req: Request) => {
     }
 
     if (user.isVerified) {
+      logger.warn("auth.verify_otp.already_verified", { email, userId: user.id });
       return NextResponse.json(
         { success: false, message: "Email is already verified." },
         { status: 400 },
@@ -57,6 +67,7 @@ export const POST = async (req: Request) => {
     }
 
     if (!user.verifyCodeExpiry) {
+      logger.warn("auth.verify_otp.expiry_missing", { email, userId: user.id });
       return NextResponse.json(
         { success: false, message: "Verification code expiry not found." },
         { status: 400 },
@@ -65,6 +76,7 @@ export const POST = async (req: Request) => {
 
     const codeExpired = Date.now() > user.verifyCodeExpiry?.getTime(); // expire time is lesser than currect time
     if (codeExpired) {
+      logger.warn("auth.verify_otp.code_expired", { email, userId: user.id });
       return NextResponse.json(
         { success: false, message: "Verification code expired." },
         { status: 400 },
@@ -73,6 +85,7 @@ export const POST = async (req: Request) => {
 
     const isCodeValid = user.verifyCode === otp;
     if (!isCodeValid) {
+      logger.warn("auth.verify_otp.invalid_code", { email, userId: user.id });
       return NextResponse.json(
         { success: false, message: "Invalid verification code." },
         { status: 400 },
@@ -88,12 +101,14 @@ export const POST = async (req: Request) => {
       },
     });
 
+    logger.info("auth.verify_otp.success", { email, userId: user.id });
+
     return NextResponse.json(
       { success: true, message: "Email verified successfully." },
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in User", error);
+    logger.error("auth.verify_otp.error", { error: String(error) });
     return NextResponse.json(
       {
         success: false,

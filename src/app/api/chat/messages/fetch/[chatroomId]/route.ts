@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rateLimit";
+import logger from "@/lib/logger";
 
 // GET /api/chat/messages/[chatroomId]?cursor=<lastMessageId>&limit=20
 export async function GET(
@@ -46,6 +47,7 @@ export async function GET(
   }
 
   try {
+    logger.info("chat.messages.fetch.request_received");
     // verify chatroom exists
     const chatRoom = await prisma.chatRoom.findUnique({
       where: { id: chatroomIdNumber },
@@ -139,7 +141,7 @@ export async function GET(
       { status: 200 },
     );
   } catch (error) {
-    console.error("[FETCH_MESSAGES_ERROR]", error);
+    logger.error("[FETCH_MESSAGES_ERROR]", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 },

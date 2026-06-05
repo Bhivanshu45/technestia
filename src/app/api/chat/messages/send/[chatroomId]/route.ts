@@ -7,6 +7,7 @@ import { sendMessageSchema } from "@/validations/chatSchema/sendMessageSchema";
 import { getUnreadMessageCount } from "@/utils/getUnreadMessagesCount";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { getIP } from "@/utils/getIP";
+import logger from "@/lib/logger";
 
 export const runtime = "nodejs";
 
@@ -67,6 +68,7 @@ export async function POST(
   const { messageType, content, file } = parsedData.data;
 
   try {
+    logger.info("chat.messages.send.request_received");
     const chatRoom = await prisma.chatRoom.findUnique({
       where: { id: chatroomIdNumber },
     });
@@ -194,7 +196,7 @@ export async function POST(
       { status: 201 },
     );
   } catch (error) {
-    console.error("[SEND_MESSAGE_ERROR]", error);
+    logger.error("[SEND_MESSAGE_ERROR]", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 },

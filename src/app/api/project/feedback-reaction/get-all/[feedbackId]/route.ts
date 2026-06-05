@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function GET(
   req: Request,
   context: { params: { feedbackId: string } }
 ) {
   try {
+    logger.info("project.feedback_reaction.get_all.request_received");
     const { feedbackId } = await context.params;
 
     const feedbackIdNumber = Number(feedbackId);
@@ -66,7 +68,7 @@ export async function GET(
       { status: 200 }
     );
   } catch (error) {
-    console.error("[FETCH_FEEDBACK_REACTIONS]", error);
+    logger.error("[FETCH_FEEDBACK_REACTIONS]", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }

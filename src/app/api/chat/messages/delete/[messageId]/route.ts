@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
+import logger from "@/lib/logger";
 
 export async function DELETE(
   _req: Request,
@@ -27,6 +28,7 @@ export async function DELETE(
   }
 
   try {
+    logger.info("chat.messages.delete.request_received");
     const message = await prisma.chatMessage.findUnique({
       where: { id: messageIdNumber },
       select: {
@@ -90,7 +92,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
-    console.error("[DELETE_MESSAGE_ERROR]", error);
+    logger.error("[DELETE_MESSAGE_ERROR]", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

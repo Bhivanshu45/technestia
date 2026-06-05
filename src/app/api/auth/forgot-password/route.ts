@@ -6,13 +6,16 @@ import { ResetPasswordPayload } from "@/types/emailPayload";
 import { forgotPasswordSchema } from "@/validations/authSchemas/forgotPasswordSchema";
 import { getIP } from "@/utils/getIP";
 import { checkRateLimit } from "@/lib/rateLimit";
+import logger from "@/lib/logger";
 
 export const POST = async (req: Request) => {
   const ip = getIP(req);
+  logger.info("auth.forgot_password.request_received", { ip });
   // check rate limit based on IP address
   const key = `forgot-password:${ip}`;
   const rateLimitRes = await checkRateLimit(key);
   if (!rateLimitRes.success) {
+    logger.warn("auth.forgot_password.rate_limited", { ip });
     return NextResponse.json(
       {
         success: false,
@@ -27,6 +30,10 @@ export const POST = async (req: Request) => {
 
   const parsedData = forgotPasswordSchema.safeParse(body);
   if (!parsedData.success) {
+    logger.warn("auth.forgot_password.validation_failed", {
+      ip,
+      errors: parsedData.error.flatten().fieldErrors,
+    });
     return NextResponse.json(
       {
         success: false,
@@ -40,10 +47,12 @@ export const POST = async (req: Request) => {
   const { email } = parsedData.data;
 
   try {
+    logger.info("auth.forgot_password.lookup_started", { email });
     const user = await prisma.user.findUnique({
       where: { email },
     });
     if (!user) {
+      logger.warn("auth.forgot_password.user_not_found", { email });
       return NextResponse.json(
         {
           success: false,
@@ -53,6 +62,7 @@ export const POST = async (req: Request) => {
       );
     }
     if (!user.isVerified) {
+        logger.warn("auth.forgot_password.user_not_verified", { email, userId: user.id });
       return NextResponse.json(
         {
           success: false,
@@ -79,6 +89,8 @@ export const POST = async (req: Request) => {
       },
     });
 
+    logger.info("auth.forgot_password.reset_token_created", { email, userId: user.id });
+
     // generate link with the token and email in the link
     const resetPasswordLink = `${process.env.RESET_PASSWORD_PAGE_URL}?token=${resetToken}&email=${email}`;
 
@@ -91,6 +103,7 @@ export const POST = async (req: Request) => {
     };
     const emailResponse = await sendEmail(payload);
     if (!emailResponse.success) {
+      logger.error("auth.forgot_password.email_failed", { email, userId: user.id });
       return NextResponse.json(
         {
           success: false,
@@ -109,7 +122,7 @@ export const POST = async (req: Request) => {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in sending reset password email:", error);
+    logger.error("auth.forgot_password.error", { error: String(error) });
     return NextResponse.json(
       {
         success: false,

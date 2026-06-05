@@ -4,10 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { CollaborationStatus } from "@prisma/client";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
+import logger from "@/lib/logger";
 
 export async function DELETE(_req: Request, context: { params: { projectId: string } }) {
   const session = await getServerSession(authOptions);
   if (!session || !session?.user || !session.user.id) {
+    logger.warn("project.leave_collab.unauthorized");
     return NextResponse.json(
       {
         success: false,
@@ -23,6 +25,7 @@ export async function DELETE(_req: Request, context: { params: { projectId: stri
   const projectIdNumber = Number(decodedProjectId);
 
   if (!projectIdNumber || isNaN(Number(projectIdNumber))) {
+    logger.warn("project.leave_collab.invalid_project_id", { projectId });
     return NextResponse.json(
       { success: false, message: "Invalid project ID" },
       { status: 400 }
@@ -30,6 +33,7 @@ export async function DELETE(_req: Request, context: { params: { projectId: stri
   }
 
   try {
+    logger.info("project.leave_collab.request_received", { userId, projectId: projectIdNumber });
     const project = await prisma.project.findUnique({
       where: { id: projectIdNumber },
       select: {
@@ -50,6 +54,7 @@ export async function DELETE(_req: Request, context: { params: { projectId: stri
     });
 
     if (!project) {
+      logger.warn("project.leave_collab.project_not_found", { userId, projectId: projectIdNumber });
       return NextResponse.json(
         { success: false, 
           message: "Project not found" },
@@ -58,6 +63,7 @@ export async function DELETE(_req: Request, context: { params: { projectId: stri
     }
 
     if (project.userId === userId) {
+      logger.warn("project.leave_collab.owner_blocked", { userId, projectId: projectIdNumber });
       return NextResponse.json(
         { message: "Owner cannot leave the project" },
         { status: 403 }
@@ -67,6 +73,7 @@ export async function DELETE(_req: Request, context: { params: { projectId: stri
     const isCollaborator = project.collaborations.length > 0;
 
     if(!isCollaborator){
+      logger.warn("project.leave_collab.not_a_collaborator", { userId, projectId: projectIdNumber });
       return NextResponse.json(
         { success: false, message: "You are not a collaborator on this project." },
         { status: 404 }
@@ -89,13 +96,15 @@ export async function DELETE(_req: Request, context: { params: { projectId: stri
       description: `User ${userId} has left the project ${projectIdNumber}`,
     });
 
+    logger.info("project.leave_collab.success", { userId, projectId: projectIdNumber });
+
     return NextResponse.json({
         success: true,
         message: "You have successfully left the project.",
       }, { status: 200 }
     );
   } catch (error) {
-    console.error("LEAVE API ERROR:", error);
+    logger.error("project.leave_collab.error", { error: String(error), userId, projectId: projectIdNumber });
     return NextResponse.json(
       { message: "Something went wrong." },
       { status: 500 }

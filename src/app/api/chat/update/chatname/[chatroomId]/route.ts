@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import z from "zod";
+import logger from "@/lib/logger";
 
 const updateChatNameSchema = z.object({
   chatName: z.string().min(1).max(100),
@@ -47,6 +48,7 @@ export async function PUT(
   const { chatName } = parsedData.data;
 
   try {
+    logger.info("chat.update.chatname.request_received");
     const chatroom = await prisma.chatRoom.findUnique({
       where: { id: chatroomIdNumber },
       select: { id: true, name: true, isGroup: true },
@@ -103,7 +105,7 @@ export async function PUT(
       { status: 200 }
     );
   } catch (error) {
-    console.error("[UPDATE_CHATROOM_NAME_ERROR]", error);
+    logger.error("[UPDATE_CHATROOM_NAME_ERROR]", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

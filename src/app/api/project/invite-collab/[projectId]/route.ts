@@ -6,11 +6,13 @@ import { AccessLevel, CollaborationStatus } from "@prisma/client";
 import { emitCollabSyncToUsers } from "@/lib/collabRealtime";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 import { checkRateLimit } from "@/lib/rateLimit";
+import logger from "@/lib/logger";
 
 export async function POST(req: Request, context: { params: { projectId: string } }) {
     const session = await getServerSession(authOptions);
     
     if (!session || !session.user?.id) {
+    logger.warn("project.invite_collab.unauthorized");
         return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 }
@@ -23,6 +25,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
     const projectIdNumber = Number(decodedProjectId);
 
     if (!projectIdNumber || isNaN(Number(projectIdNumber))) {
+      logger.warn("project.invite_collab.invalid_project_id", { projectId });
       return NextResponse.json(
         { success: false, message: "Invalid project ID" },
         { status: 400 }
@@ -33,6 +36,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
     const key = `invite-collab:user:${userId}:project:${projectIdNumber}`;
     const rateLimitRes = await checkRateLimit(key);
     if (!rateLimitRes.success) {
+      logger.warn("project.invite_collab.rate_limited", { userId, projectId: projectIdNumber });
         return NextResponse.json(
         {
             success: false,
@@ -46,6 +50,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
     const body = await req.json();
     const giveAccess = body.giveAccess;
     if (!giveAccess || (giveAccess !== "FULL" && giveAccess !== "LIMITED")) {
+      logger.warn("project.invite_collab.invalid_access_level", { userId, projectId: projectIdNumber, giveAccess });
       return NextResponse.json({
         success: false,
         message: "Invalid access level"
@@ -54,6 +59,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
     const targetUserId = Number(body.userId);
 
     if (isNaN(targetUserId)) {
+      logger.warn("project.invite_collab.invalid_target_user", { userId, projectId: projectIdNumber, targetUserId: body.userId });
         return NextResponse.json(
         { success: false, message: "Invalid user ID" },
         { status: 400 }
@@ -61,6 +67,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
     }
 
     if (userId === targetUserId) {
+    logger.warn("project.invite_collab.self_invite_blocked", { userId, projectId: projectIdNumber });
         return NextResponse.json(
             { success: false, message: "You cannot invite yourself to the project." },
             { status: 403 }
@@ -68,6 +75,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
     }
     
     try {
+      logger.info("project.invite_collab.request_received", { userId, projectId: projectIdNumber, targetUserId, giveAccess });
         const project = await prisma.project.findUnique({
         where: { id: projectIdNumber },
         select: {
@@ -84,6 +92,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
         });
     
         if (!project) {
+      logger.warn("project.invite_collab.project_not_found", { userId, projectId: projectIdNumber });
         return NextResponse.json(
             { success: false, message: "Project not found" },
             { status: 404 }
@@ -91,6 +100,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
         }
 
         if(project.userId == targetUserId){
+      logger.warn("project.invite_collab.owner_invite_blocked", { userId, projectId: projectIdNumber, targetUserId });
             return NextResponse.json(
                 { success: false, message: "Project owner cannot be invited" },
                 { status: 403 }
@@ -101,6 +111,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
         const isFullAccessCollab = project.collaborations.length > 0;
     
         if (!isOwner && !isFullAccessCollab) {
+      logger.warn("project.invite_collab.forbidden", { userId, projectId: projectIdNumber, targetUserId });
         return NextResponse.json(
             { success: false, message: "Forbidden: Access Denied" },
             { status: 403 }
@@ -117,6 +128,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
         });
 
         if (existingCollab) {
+          logger.warn("project.invite_collab.already_exists", { userId, projectId: projectIdNumber, targetUserId, status: existingCollab.status });
           return NextResponse.json(
             {
               success: false,
@@ -135,6 +147,8 @@ export async function POST(req: Request, context: { params: { projectId: string 
                 accessLevel: giveAccess === "FULL" ? AccessLevel.FULL : AccessLevel.LIMITED,
             }
         })
+
+          logger.info("project.invite_collab.success", { userId, projectId: projectIdNumber, targetUserId, collaborationId: createInvite.id });
 
         await createActivityAndNotify({
           userId,
@@ -164,7 +178,7 @@ export async function POST(req: Request, context: { params: { projectId: string 
         );
 
     } catch (error) {
-        console.error("Error inviting collaborator :", error);
+    logger.error("project.invite_collab.error", { error: String(error), userId, projectId: projectIdNumber });
         return NextResponse.json(
         { success: false, message: "Internal server error" },
         { status: 500 }

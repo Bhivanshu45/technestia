@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { uploadToCloudinary } from "@/utils/uploadToCloudinary";
 import { deleteFromCloudinary } from "@/utils/deleteFromCloudinary";
+import logger from "@/lib/logger";
 
 export async function PUT(req: Request,context: { params: { chatroomId: string } }) {
   const session = await getServerSession(authOptions);
@@ -27,6 +28,7 @@ export async function PUT(req: Request,context: { params: { chatroomId: string }
   const userId = Number(session.user.id);
 
   try {
+    logger.info("chat.upload_image.request_received");
     const chatroom = await prisma.chatRoom.findUnique({
       where: { id: chatroomIdNumber },
       select: {
@@ -131,7 +133,7 @@ export async function PUT(req: Request,context: { params: { chatroomId: string }
       { status: 200 }
     );
   } catch (error) {
-    console.error("[UPDATE_PROFILE_IMAGE_ERROR]", error);
+    logger.error("[UPDATE_PROFILE_IMAGE_ERROR]", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

@@ -3,6 +3,7 @@ import { authOptions } from "../../../auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
 import { CollaborationStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function GET(_req: Request) {
   const session = await getServerSession(authOptions);
@@ -22,6 +23,7 @@ export async function GET(_req: Request) {
   }
 
   try {
+    logger.info("project.user_projects.collaborated.request_received");
     // Fetch all accepted collaborations
     const collaborations = await prisma.collaboration.findMany({
       where: {
@@ -60,7 +62,7 @@ export async function GET(_req: Request) {
     },{ status: 200 });
 
   } catch (error) {
-    console.error("Error fetching collaborated projects:", error);
+    logger.error("Error fetching collaborated projects:", error);
     return NextResponse.json({
         success: false,
         message: "Internal server error",

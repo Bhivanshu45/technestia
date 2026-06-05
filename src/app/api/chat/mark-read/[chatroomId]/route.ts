@@ -2,6 +2,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import logger from "@/lib/logger";
 
 export async function PATCH(
   _req: Request,
@@ -21,6 +22,7 @@ export async function PATCH(
   }
 
   try {
+    logger.info("chat.mark_read.request_received");
     const participant = await prisma.chatParticipant.findFirst({
       where: {
         chatRoomId: chatroomIdNumber,
@@ -64,7 +66,7 @@ export async function PATCH(
       { status: 200 },
     );
   } catch (error) {
-    console.error("[MARK_READ_ERROR]", error);
+    logger.error("[MARK_READ_ERROR]", error);
     return NextResponse.json(
       { error: "Something went wrong" },
       { status: 500 },

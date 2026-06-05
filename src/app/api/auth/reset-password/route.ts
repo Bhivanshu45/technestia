@@ -5,13 +5,16 @@ import crypto from "crypto";
 import { comparePassword, hashPassword } from "@/utils/hashPassword";
 import { getIP } from "@/utils/getIP";
 import { checkRateLimit } from "@/lib/rateLimit";
+import logger from "@/lib/logger";
 
 export const POST = async (req: Request) => {
   const ip = getIP(req);
+  logger.info("auth.reset_password.request_received", { ip });
   // check rate limit based on IP address
   const key = `reset-password:${ip}`;
   const rateLimitRes = await checkRateLimit(key);
   if (!rateLimitRes.success) {
+    logger.warn("auth.reset_password.rate_limited", { ip });
     return NextResponse.json(
       {
         success: false,
@@ -25,6 +28,10 @@ export const POST = async (req: Request) => {
   // validation
   const parsedData = resetPasswordSchema.safeParse(body);
   if (!parsedData.success) {
+    logger.warn("auth.reset_password.validation_failed", {
+      ip,
+      errors: parsedData.error.flatten().fieldErrors,
+    });
     return NextResponse.json(
       {
         success: false,
@@ -36,11 +43,13 @@ export const POST = async (req: Request) => {
   }
   const { email, token, newPassword } = parsedData.data;
   try {
+    logger.info("auth.reset_password.lookup_started", { email });
     const user = await prisma.user.findUnique({
       where: { email },
     });
 
     if (!user) {
+      logger.warn("auth.reset_password.user_not_found", { email });
       return NextResponse.json(
         {
           success: false,
@@ -51,6 +60,7 @@ export const POST = async (req: Request) => {
     }
 
     if (!user.resetPasswordToken || !user.resetTokenExpiry) {
+      logger.warn("auth.reset_password.request_missing", { email, userId: user.id });
       return NextResponse.json(
         {
           success: false,
@@ -62,6 +72,7 @@ export const POST = async (req: Request) => {
 
     // Check token expiry
     if (new Date() > user.resetTokenExpiry) {
+      logger.warn("auth.reset_password.token_expired", { email, userId: user.id });
       return NextResponse.json(
         {
           success: false,
@@ -73,6 +84,7 @@ export const POST = async (req: Request) => {
 
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
     if (hashedToken !== user.resetPasswordToken) {
+      logger.warn("auth.reset_password.invalid_token", { email, userId: user.id });
       return NextResponse.json(
         { success: false, message: "Invalid reset token." },
         { status: 409 },
@@ -82,6 +94,7 @@ export const POST = async (req: Request) => {
     // Check if new password is same as old password
     const isSamePassword = await comparePassword(newPassword, user.password);
     if (isSamePassword) {
+      logger.warn("auth.reset_password.same_password", { email, userId: user.id });
       return NextResponse.json(
         {
           success: false,
@@ -104,6 +117,8 @@ export const POST = async (req: Request) => {
       },
     });
 
+    logger.info("auth.reset_password.success", { email, userId: user.id });
+
     return NextResponse.json(
       {
         success: true,
@@ -112,7 +127,7 @@ export const POST = async (req: Request) => {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in Reset Password API:", error);
+    logger.error("auth.reset_password.error", { error: String(error) });
     return NextResponse.json(
       {
         success: false,

@@ -6,6 +6,7 @@ import { sendEmail } from "@/helpers/sendEmail";
 import { VerifyEmailPayload } from "@/types/emailPayload";
 import { getIP } from "@/utils/getIP";
 import { checkRateLimit } from "@/lib/rateLimit";
+import logger from "@/lib/logger";
 
 const resendOtpSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -16,10 +17,12 @@ const RESEND_COOLDOWN_MINUTES = 1;
 export const POST = async (req: Request) => {
   try {
     const ip = getIP(req);
+    logger.info("auth.resend_otp.request_received", { ip });
     // check rate limit based on IP address
     const key = `resend-otp:${ip}`;
     const rateLimitRes = await checkRateLimit(key);
     if (!rateLimitRes.success) {
+      logger.warn("auth.resend_otp.rate_limited", { ip });
       return NextResponse.json(
         {
           success: false,
@@ -34,6 +37,10 @@ export const POST = async (req: Request) => {
     // validation
     const parsedData = resendOtpSchema.safeParse(body);
     if (!parsedData.success) {
+      logger.warn("auth.resend_otp.validation_failed", {
+        ip,
+        errors: parsedData.error.flatten().fieldErrors,
+      });
       return NextResponse.json(
         {
           success: false,
@@ -45,12 +52,14 @@ export const POST = async (req: Request) => {
     }
 
     const { email } = parsedData.data;
+    logger.info("auth.resend_otp.lookup_started", { email });
 
     // if email we have then using it find an email
     const user = await prisma.user.findUnique({
       where: { email },
     });
     if (!user) {
+      logger.warn("auth.resend_otp.user_not_found", { email });
       return NextResponse.json(
         {
           success: false,
@@ -61,6 +70,7 @@ export const POST = async (req: Request) => {
     }
 
     if (user.isVerified) {
+      logger.warn("auth.resend_otp.already_verified", { email, userId: user.id });
       return NextResponse.json(
         {
           success: false,
@@ -78,6 +88,11 @@ export const POST = async (req: Request) => {
         (1000 * 60);
 
       if (durationMinutes < RESEND_COOLDOWN_MINUTES) {
+        logger.warn("auth.resend_otp.cooldown_active", {
+          email,
+          userId: user.id,
+          remainingSeconds: Math.ceil((RESEND_COOLDOWN_MINUTES - durationMinutes) * 60),
+        });
         return NextResponse.json(
           {
             success: false,
@@ -101,6 +116,11 @@ export const POST = async (req: Request) => {
       },
     });
 
+    logger.info("auth.resend_otp.code_generated", {
+      email,
+      userId: user.id,
+    });
+
     // send verification email
     const payload: VerifyEmailPayload = {
       email: email,
@@ -110,6 +130,7 @@ export const POST = async (req: Request) => {
     };
     const emailResponse = await sendEmail(payload);
     if (!emailResponse.success) {
+      logger.error("auth.resend_otp.email_failed", { email, userId: user.id });
       return NextResponse.json(
         {
           success: false,
@@ -129,7 +150,7 @@ export const POST = async (req: Request) => {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in Resend OTP API:", error);
+    logger.error("auth.resend_otp.error", { error: String(error) });
     return NextResponse.json(
       {
         success: false,

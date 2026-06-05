@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import logger from "@/lib/logger";
 
 interface Params{
     params : {username : string}
@@ -18,6 +19,7 @@ export async function GET(_req: Request,{params}: Params){
     }
 
     try{
+    logger.info("profile.request_received");
         const user = await prisma.user.findUnique({
           where: { username: decodedUsername },
           select: {
@@ -45,7 +47,7 @@ export async function GET(_req: Request,{params}: Params){
         },{status: 200})
 
     }catch(error){
-        console.error("[GET_PROFILE_ERROR]", error);
+        logger.error("[GET_PROFILE_ERROR]", error);
         return NextResponse.json(
           { success: false, message: "Internal Server Error" },
           { status: 500 }

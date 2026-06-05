@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { AccessLevel, CollaborationStatus } from "@prisma/client";
 import { emitCollabSyncToUsers } from "@/lib/collabRealtime";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
+import logger from "@/lib/logger";
 
 export async function PATCH(
   req: Request,
@@ -13,6 +14,7 @@ export async function PATCH(
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user?.id) {
+    logger.warn("project.accept_collab.unauthorized");
     return NextResponse.json(
       { success: false, message: "Unauthorized" },
       { status: 401 }
@@ -25,6 +27,7 @@ export async function PATCH(
   const projectIdNumber = Number(decodedProjectId);
 
   if (!projectIdNumber || isNaN(Number(projectIdNumber))) {
+    logger.warn("project.accept_collab.invalid_project_id", { projectId });
     return NextResponse.json(
       { success: false, message: "Invalid project ID" },
       { status: 400 }
@@ -35,6 +38,7 @@ export async function PATCH(
   const targetCollabId = parseInt(body.targetCollabId);
 
   if (isNaN(targetCollabId)) {
+    logger.warn("project.accept_collab.invalid_collab_id", { projectId: projectIdNumber, targetCollabId: body.targetCollabId });
     return NextResponse.json(
       {
         success: false,
@@ -45,6 +49,7 @@ export async function PATCH(
   }
 
   try {
+    logger.info("project.accept_collab.request_received", { userId, projectId: projectIdNumber, targetCollabId });
     const project = await prisma.project.findUnique({
       where: { id: projectIdNumber },
       select: { 
@@ -59,6 +64,7 @@ export async function PATCH(
     });
 
     if (!project) {
+      logger.warn("project.accept_collab.project_not_found", { userId, projectId: projectIdNumber });
       return NextResponse.json(
         { success: false, message: "Project not found" },
         { status: 404 }
@@ -70,6 +76,7 @@ export async function PATCH(
     const isFullAccessCollab = project.collaborations.length > 0;
 
     if (!isOwner && !isFullAccessCollab) {
+      logger.warn("project.accept_collab.forbidden", { userId, projectId: projectIdNumber });
       return NextResponse.json(
         {
           success: false,
@@ -89,6 +96,7 @@ export async function PATCH(
     });
 
     if (!collab) {
+      logger.warn("project.accept_collab.request_not_found", { userId, projectId: projectIdNumber, targetCollabId });
       return NextResponse.json(
         {
           success: false,
@@ -105,6 +113,8 @@ export async function PATCH(
         lastUpdatedAt: new Date(),
       },
     });
+
+    logger.info("project.accept_collab.success", { userId, projectId: projectIdNumber, targetCollabId, collaboratorUserId: collab.userId });
 
     await createActivityAndNotify({
       userId,
@@ -135,7 +145,7 @@ export async function PATCH(
     },{status: 200});
 
   } catch (error) {
-    console.error("Accept Collab Error:", error);
+    logger.error("project.accept_collab.error", { error: String(error), userId, projectId: projectIdNumber, targetCollabId });
     return NextResponse.json(
       {
         success: false,

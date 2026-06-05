@@ -2,12 +2,14 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
+import logger from "@/lib/logger";
 
 export async function GET(
   req: Request,
   context: { params: { chatroomId: string } }
 ) {
   try {
+    logger.info("chat.get_roomdata.request_received");
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.id) {
       return NextResponse.json(
@@ -92,7 +94,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Fetch chatroom error:", error);
+    logger.error("Fetch chatroom error:", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

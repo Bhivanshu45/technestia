@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import logger from "@/lib/logger";
 
 const editMessageSchema = z.object({
   newMessage: z.string().trim().min(1, "Message cannot be empty"),
@@ -48,6 +49,7 @@ export async function PATCH(
   const { newMessage } = parsed.data;
 
   try {
+    logger.info("chat.messages.edit.request_received");
     const message = await prisma.chatMessage.findUnique({
       where: { id: messageIdNumber },
       select: {
@@ -129,7 +131,7 @@ export async function PATCH(
       { status: 200 }
     );
   } catch (error) {
-    console.error("[EDIT_MESSAGE_ERROR]", error);
+    logger.error("[EDIT_MESSAGE_ERROR]", error);
     return NextResponse.json(
       { success: false, message: "Server error" },
       { status: 500 }

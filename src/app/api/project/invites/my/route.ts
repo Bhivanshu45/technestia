@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CollaborationStatus } from "@prisma/client";
+import logger from "@/lib/logger";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -23,6 +24,7 @@ export async function GET() {
   }
 
   try {
+    logger.info("project.invites.my.request_received");
     const invites = await prisma.collaboration.findMany({
       where: {
         userId,
@@ -63,7 +65,7 @@ export async function GET() {
       { status: 200 }
     );
   } catch (error) {
-    console.error("[GET_MY_INVITES_ERROR]", error);
+    logger.error("[GET_MY_INVITES_ERROR]", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

@@ -3,12 +3,14 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CollaborationStatus } from "@prisma/client";
+import logger from "@/lib/logger";
 
 export async function GET(
   _req: Request,
   context: { params: { projectId: string } }
 ) {
   try {
+    logger.info("project.collaborators.request_received");
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user || !session.user.id) {
@@ -105,7 +107,7 @@ export async function GET(
     },{ status: 200 });
 
   } catch (error) {
-    console.error("Error fetching collaborators:", error);
+    logger.error("Error fetching collaborators:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }

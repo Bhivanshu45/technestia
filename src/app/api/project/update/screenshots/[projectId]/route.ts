@@ -6,6 +6,7 @@ import { updateScreenshotsSchema } from "@/validations/projectSchemas/updateProj
 import { uploadToCloudinary } from "@/utils/uploadToCloudinary";
 import { AccessLevel, CollaborationStatus } from "@prisma/client";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
+import logger from "@/lib/logger";
 
 export async function PATCH(req: Request, context:{ params: { projectId: string } }) {
   const session = await getServerSession(authOptions);
@@ -30,7 +31,7 @@ export async function PATCH(req: Request, context:{ params: { projectId: string 
     );
   }
 
-  console.log("Project ID :", projectIdNumber);
+  logger.info("project.update.screenshots.project_id", { projectIdNumber });
 
   const body = await req.json();
   const parsed = updateScreenshotsSchema.safeParse(body);
@@ -46,11 +47,12 @@ export async function PATCH(req: Request, context:{ params: { projectId: string 
     );
   }
 
-  console.log("Parsed Data :", parsed.data);
+  logger.info("project.update.screenshots.parsed_data", { screenshotsCount: parsed.data.screenshots.length });
 
   const { screenshots } = parsed.data;
 
   try {
+    logger.info("project.update.screenshots.request_received");
     const project = await prisma.project.findUnique({
       where: { id: projectIdNumber },
       select: {
@@ -73,7 +75,7 @@ export async function PATCH(req: Request, context:{ params: { projectId: string 
       );
     }
 
-    console.log("Project Data :", project);
+    logger.info("project.update.screenshots.project_loaded", { projectIdNumber, ownerId: project.userId });
 
     const isOwner = project.userId === userId;
     const isFullCollaborator = project.collaborations.length > 0;
@@ -90,7 +92,7 @@ export async function PATCH(req: Request, context:{ params: { projectId: string 
         const buffer = Buffer.from(file.buffer, "base64");
         const type = file.type.startsWith("video") ? "video" : "image";
         const { secureUrl } = await uploadToCloudinary(buffer, type);
-        console.log("Uploaded Screenshot URL:", secureUrl);
+        logger.info("project.update.screenshots.uploaded", { projectIdNumber, type, secureUrl });
         return secureUrl;
       })
     );
@@ -120,7 +122,7 @@ export async function PATCH(req: Request, context:{ params: { projectId: string 
       { status: 200 }
     );
   } catch (error) {
-    console.error("Update screenshots error:", error);
+    logger.error("Update screenshots error:", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

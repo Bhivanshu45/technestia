@@ -2,11 +2,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/options";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import logger from "@/lib/logger";
 
 export async function GET(_req: Request) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user || !session.user.id) {
+    logger.warn("profile.mydata.unauthorized");
     return NextResponse.json(
       { success: false, message: "Unauthorized" },
       { status: 401 }
@@ -15,6 +17,7 @@ export async function GET(_req: Request) {
 
   try {
     const userId = parseInt(session.user.id);
+    logger.info("profile.mydata.request_received", { userId });
 
     const dbUser = await prisma.user.findUnique({
       where: { id: userId },
@@ -35,6 +38,7 @@ export async function GET(_req: Request) {
     });
 
     if (!dbUser) {
+      logger.warn("profile.mydata.user_not_found", { userId });
       return NextResponse.json(
         { success: false, message: "User not found" },
         { status: 404 }
@@ -47,7 +51,7 @@ export async function GET(_req: Request) {
         user: dbUser
      }, { status: 200 });
   } catch (error) {
-    console.error("[GET_LOGGED_IN_USER_PROFILE_ERROR]", error);
+    logger.error("profile.mydata.error", { error: String(error) });
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

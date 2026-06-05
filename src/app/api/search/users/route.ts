@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import logger from "@/lib/logger";
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const query = searchParams.get("query")?.trim();
+
+    logger.info("search.users.request_received", { query });
 
     const filters: any = {
       isVerified: true,
@@ -35,6 +38,7 @@ export async function GET(req: Request) {
     });
 
     if (users.length === 0) {
+      logger.info("search.users.no_results", { query });
       return NextResponse.json({
         success: true,
         message: "No users found matching your query",
@@ -48,7 +52,7 @@ export async function GET(req: Request) {
       data: users,
     });
   } catch (error) {
-    console.error("SEARCH USERS API ERROR:", error);
+    logger.error("search.users.error", { error: String(error), query });
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }
