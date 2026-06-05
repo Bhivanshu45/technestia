@@ -7,31 +7,52 @@ import { randomInt } from "crypto";
 import { VerifyEmailPayload } from "@/types/emailPayload";
 import { getIP } from "@/utils/getIP";
 import { checkRateLimit } from "@/lib/rateLimit";
+import logger from "@/lib/logger";
 
 export const POST = async (req: Request) => {
   try {
     const ip = getIP(req);
+    logger.info("signup.request_received", {
+      route: "/api/auth/sign-up",
+      method: "POST",
+      ip,
+    });
+
     // check rate limit based on IP address
     const key = `signup:${ip}`;
     const rateLimitRes = await checkRateLimit(key);
-    if (!rateLimitRes.success){
-      return NextResponse.json({
-        success: false,
-        message: "Too many requests. Please try again later.",
-      },{status: 429})
+    if (!rateLimitRes.success) {
+      logger.warn("signup.rate_limited", {
+        route: "/api/auth/sign-up",
+        ip,
+        key,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Too many requests. Please try again later.",
+        },
+        { status: 429 },
+      );
     }
 
     const body = await req.json();
     // validate the request data
     const parsedData = signUpSchema.safeParse(body);
     if (!parsedData.success) {
+      logger.warn("signup.validation_failed", {
+        route: "/api/auth/sign-up",
+        ip,
+        errors: parsedData.error.flatten().fieldErrors,
+      });
+
       return NextResponse.json(
         {
           success: false,
           message: "Invalid input data",
           errors: parsedData.error.flatten().fieldErrors,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -42,13 +63,19 @@ export const POST = async (req: Request) => {
       where: { username },
     });
     if (existingUsername) {
+      logger.info("signup.username_exists", {
+        route: "/api/auth/sign-up",
+        ip,
+        username,
+      });
+
       return NextResponse.json(
         {
           success: false,
           message: "Username already exists",
           errors: { username: "Username is already taken" },
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -60,12 +87,17 @@ export const POST = async (req: Request) => {
 
     if (existingEmail) {
       if (existingEmail.isVerified) {
+        logger.info("signup.email_conflict_verified", {
+          route: "/api/auth/sign-up",
+          ip,
+          email,
+        });
         return NextResponse.json(
           {
             success: false,
             message: "Email already exists, choose another email",
           },
-          { status: 409 }
+          { status: 409 },
         );
       } else {
         // email exist but not verified
@@ -88,6 +120,14 @@ export const POST = async (req: Request) => {
             verifyCodeExpiry: expiryDate,
           },
         });
+
+        logger.info("signup.unverified_user_updated", {
+          route: "/api/auth/sign-up",
+          ip,
+          userId: existingEmail.id,
+          email,
+          username,
+        });
       }
     } else {
       // email not exist , create new user
@@ -107,6 +147,13 @@ export const POST = async (req: Request) => {
           verifyCodeExpiry: expiryDate,
         },
       });
+
+      logger.info("signup.user_created", {
+        route: "/api/auth/sign-up",
+        ip,
+        email,
+        username,
+      });
     }
 
     // send verification email
@@ -118,32 +165,56 @@ export const POST = async (req: Request) => {
     };
     const emailResponse = await sendEmail(payload);
     if (!emailResponse.success) {
+      logger.error("signup.verification_email_failed", {
+        route: "/api/auth/sign-up",
+        ip,
+        email,
+        provider: "resend",
+      });
       return NextResponse.json(
         {
           success: false,
           message: "Failed to send verification email. Please try again later.",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
+    logger.info("signup.verification_email_sent", {
+      route: "/api/auth/sign-up",
+      ip,
+      email,
+      provider: "resend",
+    });
+
     // return success response
+    logger.info("signup.success", {
+      route: "/api/auth/sign-up",
+      ip,
+      email,
+      username,
+    });
     return NextResponse.json(
       {
         success: true,
         message:
           "User registered successfully. Please check your email for verification code.",
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
-    console.error("Register API Error:", error);
+    logger.error("signup.error", {
+      route: "/api/auth/sign-up",
+      error,
+    });
+
+    // console.error("Register API Error:", error);
     return NextResponse.json(
       {
         success: false,
         message: "Failed to register user. Please try again later.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 };

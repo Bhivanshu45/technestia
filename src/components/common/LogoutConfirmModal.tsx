@@ -37,7 +37,7 @@ const LogoutConfirmModal = ({
         </Button>
       </AlertDialogTrigger>
 
-      <AlertDialogContent>
+      <AlertDialogContent className="bg-white text-black dark:bg-[#232326] dark:text-zinc-100">
         <AlertDialogHeader className="text-lg font-semibold">
           Are you sure you want to logout?
         </AlertDialogHeader>
