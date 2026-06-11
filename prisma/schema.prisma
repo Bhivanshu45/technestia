@@ -5,43 +5,184 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id          Int      @id @default(autoincrement())
-  name        String
-  email       String   @unique
-  username    String   @unique
-  password    String
-  image       String? // OAuth ya manual upload
-  imagePublicId   String?
-  bio         String?
-  role        Role     @default(USER)
-  isVerified         Boolean   @default(false)
-  verifyCode         String?
-  verifyCodeExpiry   DateTime?
-  lastOtpRequestedAt   DateTime?
-  resetPasswordToken       String?   // Hashed token
-  resetTokenExpiry DateTime?
-  githubUrl   String?
-  linkedinUrl String?
-  websiteUrl  String?
-  achievementPoints Int @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                    Int                @id @default(autoincrement())
+  name                  String
+  email                 String             @unique
+  username              String             @unique
+  password              String
+  image                 String?
+  imagePublicId         String?
+  bio                   String?
+  role                  Role               @default(USER)
+  isVerified            Boolean            @default(false)
+  verifyCode            String?
+  verifyCodeExpiry      DateTime?
+  lastOtpRequestedAt    DateTime?
+  resetPasswordToken    String?
+  resetTokenExpiry      DateTime?
+  githubUrl             String?
+  linkedinUrl           String?
+  websiteUrl            String?
+  achievementPoints     Int                @default(0)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  activityLogs          ActivityLog[]
+  chatMessages          ChatMessage[]
+  chatParticipations    ChatParticipant[]
+  invitedCollaborations Collaboration[]    @relation("InviteSender")
+  collaborations        Collaboration[]
+  feedbacks             Feedback[]
+  feedbackReactions     FeedbackReaction[]
+  milestonesCreated     Milestone[]
+  notifications         Notification[]
+  projects              Project[]
+}
 
-  // Relations
-  projects           Project[]
-  collaborations     Collaboration[]
-  invitedCollaborations Collaboration[] @relation("InviteSender")
-  feedbacks          Feedback[]
-  notifications      Notification[]
-  milestonesCreated  Milestone[] // milestones created by user
-  feedbackReactions  FeedbackReaction[]
-  activityLogs       ActivityLog[]
-  chatParticipations ChatParticipant[]
-  chatMessages       ChatMessage[]
+model Project {
+  id             Int             @id @default(autoincrement())
+  title          String
+  description    String
+  techStack      String[]
+  tags           String[]
+  status         ProjectStatus   @default(IDEA)
+  isPublic       Boolean         @default(false)
+  githubUrl      String?
+  liveDemoUrl    String?
+  screenshots    String[]
+  uploadedAt     DateTime        @default(now())
+  lastUpdatedAt  DateTime        @updatedAt
+  userId         Int
+  activityLogs   ActivityLog[]
+  chatRooms      ChatRoom[]
+  collaborations Collaboration[]
+  feedbacks      Feedback[]
+  milestones     Milestone[]
+  user           User            @relation(fields: [userId], references: [id])
+}
+
+model Collaboration {
+  id            Int                 @id @default(autoincrement())
+  projectId     Int
+  userId        Int
+  status        CollaborationStatus @default(PENDING)
+  accessLevel   AccessLevel         @default(LIMITED)
+  createdAt     DateTime            @default(now())
+  lastUpdatedAt DateTime            @updatedAt
+  invitedBy     Int?
+  inviter       User?               @relation("InviteSender", fields: [invitedBy], references: [id])
+  project       Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Milestone {
+  id               Int                 @id @default(autoincrement())
+  title            String
+  description      String
+  projectId        Int
+  createdById      Int
+  completionStatus CompletionStatus    @default(NOT_STARTED)
+  proofUrl         String?
+  isPublic         Boolean             @default(false)
+  createdAt        DateTime            @default(now())
+  lastUpdatedAt    DateTime            @updatedAt
+  updateRequest    UpdateRequestStatus @default(NO_REQUEST)
+  createdBy        User                @relation(fields: [createdById], references: [id])
+  project          Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Feedback {
+  id            Int                @id @default(autoincrement())
+  content       String
+  rating        Int?
+  projectId     Int
+  createdById   Int
+  createdAt     DateTime           @default(now())
+  lastUpdatedAt DateTime           @updatedAt
+  createdBy     User               @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  project       Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reactions     FeedbackReaction[]
+}
+
+model FeedbackReaction {
+  id         Int          @id @default(autoincrement())
+  type       ReactionType
+  userId     Int
+  feedbackId Int
+  createdAt  DateTime     @default(now())
+  feedback   Feedback     @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([feedbackId, userId])
+}
+
+model ActivityLog {
+  id          Int          @id @default(autoincrement())
+  projectId   Int
+  userId      Int
+  actionType  ActivityType
+  description String?
+  targetId    Int?
+  targetType  String?
+  createdAt   DateTime     @default(now())
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id         Int              @id @default(autoincrement())
+  userId     Int
+  type       NotificationType
+  message    String
+  isRead     Boolean          @default(false)
+  targetId   Int?
+  targetType String?
+  createdAt  DateTime         @default(now())
+  user       User             @relation(fields: [userId], references: [id])
+}
+
+model ChatRoom {
+  id            Int               @id @default(autoincrement())
+  projectId     Int?
+  isGroup       Boolean           @default(false)
+  name          String?
+  image         String?
+  createdAt     DateTime          @default(now())
+  lastMessageAt DateTime          @default(now())
+  imagePublicId String?
+  messages      ChatMessage[]
+  participants  ChatParticipant[]
+  project       Project?          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ChatParticipant {
+  id         Int       @id @default(autoincrement())
+  chatRoomId Int
+  userId     Int
+  joinedAt   DateTime  @default(now())
+  hasLeft    Boolean   @default(false)
+  lastSeenAt DateTime?
+  isAdmin    Boolean   @default(false)
+  chatRoom   ChatRoom  @relation(fields: [chatRoomId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@unique([chatRoomId, userId])
+}
+
+model ChatMessage {
+  id                 Int         @id @default(autoincrement())
+  chatRoomId         Int
+  senderId           Int
+  message            String
+  messageType        MessageType @default(TEXT)
+  isEdited           Boolean     @default(false)
+  isDeleted          Boolean     @default(false)
+  createdAt          DateTime    @default(now())
+  cloudinaryPublicId String?
+  chatRoom           ChatRoom    @relation(fields: [chatRoomId], references: [id])
+  sender             User        @relation(fields: [senderId], references: [id])
 }
 
 enum Role {
@@ -55,45 +196,6 @@ enum ProjectStatus {
   COMPLETED
 }
 
-model Project {
-  id            Int           @id @default(autoincrement())
-  title         String
-  description   String
-  techStack     String[]
-  tags          String[]
-  status        ProjectStatus @default(IDEA)
-  isPublic      Boolean       @default(false)
-  githubUrl     String?
-  liveDemoUrl   String?
-  screenshots   String[]
-  uploadedAt    DateTime      @default(now())
-  lastUpdatedAt DateTime      @updatedAt
-
-  // Relations
-  userId         Int
-  user           User            @relation(fields: [userId], references: [id])
-  milestones     Milestone[]
-  feedbacks      Feedback[]
-  collaborations Collaboration[]
-  activityLogs   ActivityLog[]
-  chatRooms      ChatRoom[]
-}
-
-model Collaboration {
-  id Int @id @default(autoincrement())
-
-  project       Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId     Int
-  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId        Int
-  status        CollaborationStatus @default(PENDING)
-  accessLevel   AccessLevel         @default(LIMITED)
-  invitedBy     Int?             
-  inviter       User?               @relation("InviteSender",fields: [invitedBy], references: [id])
-  createdAt     DateTime            @default(now())
-  lastUpdatedAt DateTime            @updatedAt
-}
-
 enum CollaborationStatus {
   PENDING
   ACCEPTED
@@ -103,22 +205,6 @@ enum CollaborationStatus {
 enum AccessLevel {
   LIMITED
   FULL
-}
-
-model Milestone {
-  id               Int              @id @default(autoincrement())
-  title            String
-  description      String
-  project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId        Int
-  createdBy        User             @relation(fields: [createdById], references: [id])
-  createdById      Int
-  completionStatus CompletionStatus @default(NOT_STARTED)
-  updateRequest    UpdateRequestStatus  @default(NO_REQUEST)
-  proofUrl         String?
-  isPublic         Boolean          @default(false)
-  createdAt        DateTime         @default(now())
-  lastUpdatedAt    DateTime         @updatedAt
 }
 
 enum UpdateRequestStatus {
@@ -135,34 +221,6 @@ enum CompletionStatus {
   SKIPPED
 }
 
-model Feedback {
-  id      Int    @id @default(autoincrement())
-  content String // Required: Detailed feedback
-  rating  Int? // Optional: Can rate from 1 to 5 stars (optional)
-
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId Int
-
-  createdBy   User @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  createdById Int
-
-  createdAt     DateTime @default(now())
-  lastUpdatedAt DateTime @updatedAt
-
-  reactions FeedbackReaction[]
-}
-
-model FeedbackReaction {
-  id         Int          @id @default(autoincrement())
-  type       ReactionType
-  user       User         @relation(fields: [userId], references: [id],onDelete: Cascade)
-  userId     Int
-  feedback   Feedback     @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
-  feedbackId Int
-  createdAt  DateTime     @default(now())
-  @@unique([feedbackId, userId])
-}
-
 enum ReactionType {
   LIKE
   LOVE
@@ -170,22 +228,6 @@ enum ReactionType {
   WOW
   SAD
   ANGRY
-}
-
-
-model ActivityLog {
-  id        Int     @id @default(autoincrement())
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId Int
-  user      User    @relation(fields: [userId], references: [id])
-  userId    Int
-
-  actionType  ActivityType
-  description String?
-  targetId    Int? // Target object (milestone id, feedback id, etc.)
-  targetType  String? // Target type like 'Milestone', 'Feedback' for dynamic linking
-
-  createdAt DateTime @default(now())
 }
 
 enum ActivityType {
@@ -196,27 +238,12 @@ enum ActivityType {
   REACT_FEEDBACK
   REQUEST_COLLABORATION
   APPROVE_COLLABORATION
-  REJECT_COLLABORATION
   POST_PROJECT
   UPDATE_PROJECT
   DELETE_PROJECT
+  REJECT_COLLABORATION
   LEAVE_PROJECT
   REMOVED_FORM_PROJECT
-}
-
-model Notification {
-  id     Int  @id @default(autoincrement())
-  user   User @relation(fields: [userId], references: [id])
-  userId Int // receiver id
-
-  type    NotificationType
-  message String
-  isRead  Boolean          @default(false)
-
-  targetId   Int? // Related object id (project, milestone, etc.)
-  targetType String? // Related object type like 'Project', 'Milestone'
-
-  createdAt DateTime @default(now())
 }
 
 enum NotificationType {
@@ -227,58 +254,6 @@ enum NotificationType {
   NEW_FEEDBACK
   FEEDBACK_REACTION
   GENERAL
-}
-
-model ChatRoom {
-  id        Int      @id @default(autoincrement())
-  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId Int? // Optional: Project-based chat or standalone group/DM
-
-  isGroup Boolean @default(false) // To differentiate DM vs Group
-  name    String?
-  image   String? // Group chat image only
-  imagePublicId  String?
-
-  createdAt     DateTime @default(now())
-  lastMessageAt DateTime @default(now()) // For sorting by recent chats
-
-  messages     ChatMessage[]
-  participants ChatParticipant[]
-}
-
-model ChatParticipant {
-  id         Int      @id @default(autoincrement())
-  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id])
-  chatRoomId Int
-
-  user   User @relation(fields: [userId], references: [id])
-  userId Int
-
-  isAdmin    Boolean   @default(false)
-
-  joinedAt   DateTime  @default(now())
-  hasLeft    Boolean   @default(false)
-  lastSeenAt DateTime? 
-  @@unique([chatRoomId, userId])
-
-}
-
-model ChatMessage {
-  id         Int      @id @default(autoincrement())
-  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id])
-  chatRoomId Int
-
-  sender   User @relation(fields: [senderId], references: [id])
-  senderId Int
-
-  message     String
-  messageType MessageType @default(TEXT) // Text, Image, File, etc.
-  cloudinaryPublicId String?
-
-  isEdited  Boolean @default(false)
-  isDeleted Boolean @default(false) // soft message for delete
-
-  createdAt DateTime @default(now())
 }
 
 enum MessageType {

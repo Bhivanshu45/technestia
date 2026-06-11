@@ -3,9 +3,13 @@ import DailyRotateFile from "winston-daily-rotate-file";
 
 const { timestamp, combine, errors, json, colorize, printf } = winston.format;
 
-const consoleFormat = printf(({ level, message, timestamp, stack }) => {
-  return `${timestamp} [${level}]: ${stack || message}`;
-});
+const consoleFormat = printf(
+  ({ level, message, timestamp, stack, correlationId }) => {
+    return `${timestamp} [${level}] [${correlationId ?? "unknown"}]: ${
+      stack || message
+    }`;
+  },
+);
 
 const logger = winston.createLogger({
   level: "info",

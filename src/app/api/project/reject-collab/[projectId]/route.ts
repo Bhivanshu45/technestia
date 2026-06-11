@@ -142,9 +142,9 @@ export async function PATCH(
         message: "Collaboration request rejected successfully",
       },
       { status: 200 }
-          logger.error("project.reject_collab.error", { error: String(error), userId, projectId: projectIdNumber, targetCollabId });
+    )
   } catch (error) {
-    logger.error("Reject Collab Error:", error);
+    logger.error("project.reject_collab.error", { error: String(error), userId, projectId: projectIdNumber, targetCollabId });
     return NextResponse.json(
       {
         success: false,
