@@ -87,8 +87,6 @@ export async function POST(req: Request) {
     }
 
     const uploadedScreenshots = await Promise.all(
-
-    logger.info("project.create.success", { userId, projectId: newProject.id, title: newProject.title });
       screenshots.map(async (file) => {
         const buffer = Buffer.from(file.buffer, "base64");
         const type = file.type.startsWith("video") ? "video" : "image";
@@ -133,6 +131,8 @@ export async function POST(req: Request) {
         },
       },
     });
+
+    logger.info("project.create.success", { userId, projectId: newProject.id, title: newProject.title });
 
     await createActivityAndNotify({
       userId,

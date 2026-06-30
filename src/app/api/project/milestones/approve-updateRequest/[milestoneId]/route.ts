@@ -3,12 +3,12 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
-import logger from "@/lib/logger";
     AccessLevel,
     CollaborationStatus,
     NotificationType,
     UpdateRequestStatus,
 } from "@prisma/client";
+import logger from "@/lib/logger";
 import { z } from "zod";
 import { createActivityAndNotify } from "@/lib/activityNotificationRealtime";
 
